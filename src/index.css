@@ -117,6 +117,18 @@ a {
   user-select: none;
 }
 
+.display-sync-badge {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .display-page-idle {
   padding: 0;
   background: #0c0b0a;
@@ -166,6 +178,47 @@ a {
   color: var(--muted);
   font-size: clamp(1.1rem, 2.4vw, 1.8rem);
   text-transform: capitalize;
+}
+
+.idle-screen-id {
+  position: absolute;
+  right: 1.1rem;
+  bottom: 0.85rem;
+  margin: 0;
+  color: rgba(244, 239, 230, 0.38);
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hall-gate {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  padding-top: 12vh;
+}
+
+.screen-id-form {
+  display: grid;
+  gap: 0.9rem;
+  width: min(16rem, 100%);
+}
+
+.screen-id-form input {
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.settings-note {
+  margin: 0;
+  max-width: 38rem;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .analog-clock {
@@ -1320,6 +1373,31 @@ a {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 2rem;
+}
+
+.sync-badge {
+  margin: 0.35rem 0 0;
+  width: fit-content;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sync-connected {
+  background: rgba(0, 166, 81, 0.18);
+  color: #7dffb0;
+}
+
+.sync-connecting {
+  background: var(--hold-soft);
+  color: #ffb577;
+}
+
+.sync-offline {
+  background: rgba(196, 69, 54, 0.18);
+  color: #ff8d82;
 }
 
 .settings-form {

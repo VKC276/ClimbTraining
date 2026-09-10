@@ -8,8 +8,6 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import * as Y from 'yjs'
-import { WebrtcProvider } from 'y-webrtc'
 import {
   idleCatchHoldSession,
   normalizeCatchHoldConfig,
@@ -59,11 +57,30 @@ import {
   type TimerSession,
 } from '../activities/timer/model'
 import type { GymSettings, GymSnapshot } from '../types'
-import { defaultSnapshot } from './defaults'
-import { loadLocalSnapshot, normalizeSettings, saveLocalSnapshot } from './storage'
+import {
+  clearTrainerScreenId,
+  ensureDeviceId,
+  isDisplayPath,
+  isScreenId,
+  normalizeScreenId,
+  readTrainerScreenId,
+  saveTrainerScreenId,
+} from './screenId'
+import {
+  loadLocalSnapshot,
+  normalizeSettings,
+  parseRemoteSnapshot,
+  saveLocalSnapshot,
+} from './storage'
+import { syncSocketUrl, type SyncStatus } from './sync'
 
 type GymContextValue = {
   snapshot: GymSnapshot
+  syncStatus: SyncStatus
+  hasScreenAccess: boolean
+  screenId: string | null
+  pairScreen: (id: string) => void
+  unpairScreen: () => void
   startActivity: (activityId: string) => void
   endActivity: () => void
   bumpInteraction: () => void
@@ -88,144 +105,131 @@ type GymContextValue = {
 
 const GymContext = createContext<GymContextValue | null>(null)
 
-function readSnapshot(map: Y.Map<unknown>): GymSnapshot {
-  const fallback = defaultSnapshot()
-  const activityId = map.get('activityId')
-  const lastInteractionAt = map.get('lastInteractionAt')
-  const settings = map.get('settings') as Partial<GymSettings> | undefined
-  const catchHoldSession = map.get('catchHoldSession') as
-    | Partial<CatchHoldSession>
-    | undefined
-  const densityCircuitSession = map.get('densityCircuitSession') as
-    | Partial<DensityCircuitSession>
-    | undefined
-  const stationTrainingSession = map.get('stationTrainingSession') as
-    | Partial<StationTrainingSession>
-    | undefined
-  const techniqueFocusSession = map.get('techniqueFocusSession') as
-    | Partial<TechniqueFocusSession>
-    | undefined
-  const emomSession = map.get('emomSession') as Partial<EmomSession> | undefined
-  const choosePathSession = map.get('choosePathSession') as
-    | Partial<ChoosePathSession>
-    | undefined
-  const fingerboardSession = map.get('fingerboardSession') as
-    | Partial<FingerboardSession>
-    | undefined
-  const timerSession = map.get('timerSession') as Partial<TimerSession> | undefined
-  return {
-    activityId: typeof activityId === 'string' ? activityId : null,
-    lastInteractionAt:
-      typeof lastInteractionAt === 'number' && Number.isFinite(lastInteractionAt)
-        ? lastInteractionAt
-        : fallback.lastInteractionAt,
-    settings: normalizeSettings(settings),
-    catchHoldSession: {
-      ...idleCatchHoldSession,
-      ...(catchHoldSession ?? {}),
-    },
-    densityCircuitSession: {
-      ...idleDensityCircuitSession,
-      ...(densityCircuitSession ?? {}),
-    },
-    stationTrainingSession: {
-      ...idleStationTrainingSession,
-      ...(stationTrainingSession ?? {}),
-    },
-    techniqueFocusSession: {
-      ...idleTechniqueFocusSession,
-      ...(techniqueFocusSession ?? {}),
-    },
-    emomSession: {
-      ...idleEmomSession,
-      ...(emomSession ?? {}),
-    },
-    choosePathSession: {
-      ...idleChoosePathSession,
-      ...(choosePathSession ?? {}),
-    },
-    fingerboardSession: {
-      ...idleFingerboardSession,
-      ...(fingerboardSession ?? {}),
-    },
-    timerSession: {
-      ...idleTimerSession,
-      ...(timerSession ?? {}),
-    },
-  }
-}
-
-function writeSnapshot(map: Y.Map<unknown>, snapshot: GymSnapshot) {
-  map.set('activityId', snapshot.activityId)
-  map.set('lastInteractionAt', snapshot.lastInteractionAt)
-  map.set('settings', snapshot.settings)
-  map.set('catchHoldSession', snapshot.catchHoldSession)
-  map.set('densityCircuitSession', snapshot.densityCircuitSession)
-  map.set('stationTrainingSession', snapshot.stationTrainingSession)
-  map.set('techniqueFocusSession', snapshot.techniqueFocusSession)
-  map.set('emomSession', snapshot.emomSession)
-  map.set('choosePathSession', snapshot.choosePathSession)
-  map.set('fingerboardSession', snapshot.fingerboardSession)
-  map.set('timerSession', snapshot.timerSession)
-}
-
 export function GymProvider({ children }: { children: ReactNode }) {
   const initial = useMemo(() => loadLocalSnapshot(), [])
+  const isDisplay = useMemo(() => isDisplayPath(), [])
+  const deviceId = useMemo(() => (isDisplay ? ensureDeviceId() : null), [isDisplay])
   const [snapshot, setSnapshot] = useState<GymSnapshot>(initial)
+  const [screenId, setScreenId] = useState<string | null>(() =>
+    isDisplay ? null : readTrainerScreenId(),
+  )
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('connecting')
   const snapshotRef = useRef(snapshot)
+  const socketRef = useRef<WebSocket | null>(null)
+  const applyingRemote = useRef(false)
 
   useEffect(() => {
     snapshotRef.current = snapshot
   }, [snapshot])
 
-  const docRef = useRef<Y.Doc | null>(null)
-  const mapRef = useRef<Y.Map<unknown> | null>(null)
-  const syncRoom = snapshot.settings.syncRoom
+  const pairScreen = useCallback((id: string) => {
+    const next = normalizeScreenId(id)
+    if (!isScreenId(next)) return
+    saveTrainerScreenId(next)
+    setScreenId(next)
+  }, [])
+
+  const unpairScreen = useCallback(() => {
+    clearTrainerScreenId()
+    setScreenId(null)
+  }, [])
 
   useEffect(() => {
-    const doc = new Y.Doc()
-    const map = doc.getMap('gym')
-    docRef.current = doc
-    mapRef.current = map
-
-    const applyFromMap = () => {
-      if (map.get('lastInteractionAt') == null) return
-      const next = readSnapshot(map)
-      snapshotRef.current = next
-      setSnapshot(next)
-      saveLocalSnapshot(next)
+    if (!isDisplay && (!screenId || !isScreenId(screenId))) {
+      setSyncStatus('offline')
+      return
+    }
+    if (isDisplay && !deviceId) {
+      setSyncStatus('offline')
+      return
     }
 
-    map.observeDeep(applyFromMap)
+    let stopped = false
+    let retryTimer = 0
+    let seedTimer = 0
+    let delay = 600
 
-    const room = syncRoom.trim() || 'vastervikclimbing-gym'
-    const provider = new WebrtcProvider(room, doc, { password: room })
+    const connect = () => {
+      if (stopped) return
+      setSyncStatus('connecting')
+      const socket = new WebSocket(
+        isDisplay && deviceId
+          ? syncSocketUrl({ role: 'display', device: deviceId })
+          : syncSocketUrl({ role: 'trainer', screen: screenId ?? '' }),
+      )
+      socketRef.current = socket
+      let gotRemote = false
+      let heartbeat = 0
 
-    const seedIfAlone = () => {
-      if (map.get('lastInteractionAt') == null) {
-        writeSnapshot(map, snapshotRef.current)
+      socket.onopen = () => {
+        delay = 600
+        setSyncStatus('connected')
+        heartbeat = window.setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.send('ping')
+        }, 20000)
+        seedTimer = window.setTimeout(() => {
+          if (!gotRemote && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(snapshotRef.current))
+          }
+        }, 400)
+      }
+
+      socket.onmessage = (event) => {
+        if (typeof event.data !== 'string' || !event.data.startsWith('{')) return
+        try {
+          const payload = JSON.parse(event.data) as { type?: string; id?: string }
+          if (payload.type === 'screen' && typeof payload.id === 'string' && isScreenId(payload.id)) {
+            setScreenId(payload.id)
+            return
+          }
+        } catch {
+          return
+        }
+        const remote = parseRemoteSnapshot(event.data)
+        if (!remote) return
+        gotRemote = true
+        if (remote.lastInteractionAt < snapshotRef.current.lastInteractionAt) return
+        applyingRemote.current = true
+        snapshotRef.current = remote
+        setSnapshot(remote)
+        saveLocalSnapshot(remote)
+        applyingRemote.current = false
+      }
+
+      socket.onclose = () => {
+        window.clearTimeout(seedTimer)
+        window.clearInterval(heartbeat)
+        setSyncStatus('offline')
+        socketRef.current = null
+        if (stopped) return
+        retryTimer = window.setTimeout(connect, delay)
+        delay = Math.min(8000, delay * 2)
+      }
+
+      socket.onerror = () => {
+        socket.close()
       }
     }
 
-    provider.on('synced', seedIfAlone)
-    const seedTimer = window.setTimeout(seedIfAlone, 1200)
+    connect()
 
     return () => {
+      stopped = true
+      window.clearTimeout(retryTimer)
       window.clearTimeout(seedTimer)
-      map.unobserveDeep(applyFromMap)
-      provider.off('synced', seedIfAlone)
-      provider.destroy()
-      doc.destroy()
-      docRef.current = null
-      mapRef.current = null
+      socketRef.current?.close()
+      socketRef.current = null
     }
-  }, [syncRoom])
+  }, [isDisplay, deviceId, isDisplay ? null : screenId])
 
   const commit = useCallback((next: GymSnapshot) => {
     snapshotRef.current = next
     setSnapshot(next)
     saveLocalSnapshot(next)
-    if (mapRef.current) writeSnapshot(mapRef.current, next)
+    const socket = socketRef.current
+    if (!applyingRemote.current && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(next))
+    }
   }, [])
 
   const bumpInteraction = useCallback(() => {
@@ -514,6 +518,11 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       snapshot,
+      syncStatus,
+      hasScreenAccess: Boolean(screenId && isScreenId(screenId)),
+      screenId,
+      pairScreen,
+      unpairScreen,
       startActivity,
       endActivity,
       bumpInteraction,
@@ -537,6 +546,10 @@ export function GymProvider({ children }: { children: ReactNode }) {
     }),
     [
       snapshot,
+      syncStatus,
+      screenId,
+      pairScreen,
+      unpairScreen,
       startActivity,
       endActivity,
       bumpInteraction,

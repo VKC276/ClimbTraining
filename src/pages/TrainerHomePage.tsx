@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { activities } from '../activities'
 import { Logo } from '../components/Logo'
+import { SyncStatusBadge } from '../components/SyncStatusBadge'
 import { useGym } from '../gym/GymContext'
 
 export function TrainerHomePage() {
@@ -16,6 +17,7 @@ export function TrainerHomePage() {
           <p className="lede">
             Momentet visas på gymskärmen. Nya pass läggs till allt eftersom.
           </p>
+          <SyncStatusBadge />
         </div>
       </header>
 

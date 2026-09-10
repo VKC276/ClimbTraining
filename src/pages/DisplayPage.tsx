@@ -10,7 +10,7 @@ import { useWakeLock } from '../hooks/useWakeLock'
 
 export function DisplayPage() {
   const now = useNow()
-  const { snapshot, bumpInteraction } = useGym()
+  const { snapshot, bumpInteraction, syncStatus, screenId } = useGym()
   const activity = getActivity(snapshot.activityId)
 
   useIdleTimeout()
@@ -46,10 +46,19 @@ export function DisplayPage() {
           : 'display-page display-page-idle'
       }
     >
+      {syncStatus !== 'connected' ? (
+        <p className={`display-sync-badge sync-${syncStatus}`}>
+          {syncStatus === 'connecting' ? 'Synkar…' : 'Synk offline'}
+        </p>
+      ) : null}
       {activity ? (
         <ActivityStage time={now} activity={activity} variant="display" />
       ) : (
-        <IdleScreen time={now} clockStyle={snapshot.settings.clockStyle} />
+        <IdleScreen
+          time={now}
+          clockStyle={snapshot.settings.clockStyle}
+          screenId={screenId ?? ''}
+        />
       )}
     </main>
   )

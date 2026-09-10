@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ApplyFont } from './components/ApplyFont'
+import { TrainerShell } from './components/TrainerShell'
 import { GymProvider } from './gym/GymContext'
 import { DisplayPage } from './pages/DisplayPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -12,10 +13,12 @@ export default function App() {
       <ApplyFont />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<TrainerHomePage />} />
-          <Route path="/pass/:activityId" element={<TrainerActivityPage />} />
-          <Route path="/installningar" element={<SettingsPage />} />
           <Route path="/display" element={<DisplayPage />} />
+          <Route element={<TrainerShell />}>
+            <Route path="/" element={<TrainerHomePage />} />
+            <Route path="/pass/:activityId" element={<TrainerActivityPage />} />
+            <Route path="/installningar" element={<SettingsPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

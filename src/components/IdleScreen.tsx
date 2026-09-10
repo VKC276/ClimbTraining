@@ -6,9 +6,10 @@ import type { ClockStyle } from '../types'
 type IdleScreenProps = {
   time: Date
   clockStyle: ClockStyle
+  screenId: string
 }
 
-export function IdleScreen({ time, clockStyle }: IdleScreenProps) {
+export function IdleScreen({ time, clockStyle, screenId }: IdleScreenProps) {
   const dateLabel = new Intl.DateTimeFormat('sv-SE', {
     weekday: 'long',
     day: 'numeric',
@@ -28,6 +29,7 @@ export function IdleScreen({ time, clockStyle }: IdleScreenProps) {
         </div>
         <p className="idle-date">{dateLabel}</p>
       </div>
+      {screenId ? <p className="idle-screen-id">{screenId}</p> : null}
     </div>
   )
 }

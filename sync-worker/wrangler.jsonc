@@ -1,0 +1,16 @@
+{
+  "name": "vvk-gym-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-10",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "GYM_ROOM", "class_name": "GymRoom" },
+      { "name": "SCREEN_REGISTRY", "class_name": "ScreenRegistry" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["GymRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["ScreenRegistry"] }
+  ]
+}

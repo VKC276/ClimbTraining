@@ -56,6 +56,86 @@ export function normalizeSettings(partial?: Partial<GymSettings>): GymSettings {
   }
 }
 
+function mergeSnapshot(
+  snapshot: GymSnapshot,
+  parsed: Partial<GymSnapshot>,
+  settingsExtra?: Partial<GymSettings>,
+) {
+  snapshot.settings = normalizeSettings({
+    ...settingsExtra,
+    ...parsed.settings,
+  })
+  snapshot.activityId =
+    typeof parsed.activityId === 'string' || parsed.activityId === null
+      ? parsed.activityId
+      : snapshot.activityId
+  snapshot.lastInteractionAt = asFiniteNumber(
+    parsed.lastInteractionAt,
+    snapshot.lastInteractionAt,
+  )
+  if (parsed.catchHoldSession) {
+    snapshot.catchHoldSession = {
+      ...idleCatchHoldSession,
+      ...parsed.catchHoldSession,
+    }
+  }
+  if (parsed.densityCircuitSession) {
+    snapshot.densityCircuitSession = {
+      ...idleDensityCircuitSession,
+      ...parsed.densityCircuitSession,
+    }
+  }
+  if (parsed.stationTrainingSession) {
+    snapshot.stationTrainingSession = {
+      ...idleStationTrainingSession,
+      ...parsed.stationTrainingSession,
+    }
+  }
+  if (parsed.techniqueFocusSession) {
+    snapshot.techniqueFocusSession = {
+      ...idleTechniqueFocusSession,
+      ...parsed.techniqueFocusSession,
+    }
+  }
+  if (parsed.emomSession) {
+    snapshot.emomSession = {
+      ...idleEmomSession,
+      ...parsed.emomSession,
+    }
+  }
+  if (parsed.choosePathSession) {
+    snapshot.choosePathSession = {
+      ...idleChoosePathSession,
+      ...parsed.choosePathSession,
+    }
+  }
+  if (parsed.fingerboardSession) {
+    snapshot.fingerboardSession = {
+      ...idleFingerboardSession,
+      ...parsed.fingerboardSession,
+    }
+  }
+  if (parsed.timerSession) {
+    snapshot.timerSession = {
+      ...idleTimerSession,
+      ...parsed.timerSession,
+    }
+  }
+}
+
+export function parseRemoteSnapshot(raw: string): GymSnapshot | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<GymSnapshot>
+    if (!parsed || typeof parsed !== 'object') return null
+    if (typeof parsed.lastInteractionAt !== 'number') return null
+    const snapshot = defaultSnapshot()
+    mergeSnapshot(snapshot, parsed)
+    return snapshot
+  } catch {
+    return null
+  }
+}
+
 export function loadLocalSnapshot(): GymSnapshot {
   const snapshot = defaultSnapshot()
   try {
@@ -68,68 +148,10 @@ export function loadLocalSnapshot(): GymSnapshot {
       ? (JSON.parse(snapshotRaw) as Partial<GymSnapshot>)
       : undefined
 
-    snapshot.settings = normalizeSettings({
-      ...fromSettings,
-      ...parsedSnapshot?.settings,
-    })
     if (parsedSnapshot) {
-      snapshot.activityId =
-        typeof parsedSnapshot.activityId === 'string' ||
-        parsedSnapshot.activityId === null
-          ? parsedSnapshot.activityId
-          : null
-      snapshot.lastInteractionAt = asFiniteNumber(
-        parsedSnapshot.lastInteractionAt,
-        snapshot.lastInteractionAt,
-      )
-      if (parsedSnapshot.catchHoldSession) {
-        snapshot.catchHoldSession = {
-          ...idleCatchHoldSession,
-          ...parsedSnapshot.catchHoldSession,
-        }
-      }
-      if (parsedSnapshot.densityCircuitSession) {
-        snapshot.densityCircuitSession = {
-          ...idleDensityCircuitSession,
-          ...parsedSnapshot.densityCircuitSession,
-        }
-      }
-      if (parsedSnapshot.stationTrainingSession) {
-        snapshot.stationTrainingSession = {
-          ...idleStationTrainingSession,
-          ...parsedSnapshot.stationTrainingSession,
-        }
-      }
-      if (parsedSnapshot.techniqueFocusSession) {
-        snapshot.techniqueFocusSession = {
-          ...idleTechniqueFocusSession,
-          ...parsedSnapshot.techniqueFocusSession,
-        }
-      }
-      if (parsedSnapshot.emomSession) {
-        snapshot.emomSession = {
-          ...idleEmomSession,
-          ...parsedSnapshot.emomSession,
-        }
-      }
-      if (parsedSnapshot.choosePathSession) {
-        snapshot.choosePathSession = {
-          ...idleChoosePathSession,
-          ...parsedSnapshot.choosePathSession,
-        }
-      }
-      if (parsedSnapshot.fingerboardSession) {
-        snapshot.fingerboardSession = {
-          ...idleFingerboardSession,
-          ...parsedSnapshot.fingerboardSession,
-        }
-      }
-      if (parsedSnapshot.timerSession) {
-        snapshot.timerSession = {
-          ...idleTimerSession,
-          ...parsedSnapshot.timerSession,
-        }
-      }
+      mergeSnapshot(snapshot, parsedSnapshot, fromSettings)
+    } else if (fromSettings) {
+      snapshot.settings = normalizeSettings(fromSettings)
     }
   } catch {
     return snapshot

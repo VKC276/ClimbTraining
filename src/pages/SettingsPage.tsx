@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
 import { idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
+import { SyncStatusBadge } from '../components/SyncStatusBadge'
 import type { ClockStyle } from '../types'
 
 export function SettingsPage() {
-  const { snapshot, updateSettings } = useGym()
-  const { clockStyle, idleTimeoutMinutes, syncRoom, fontId } = snapshot.settings
+  const { snapshot, updateSettings, screenId, unpairScreen } = useGym()
+  const { clockStyle, idleTimeoutMinutes, fontId } = snapshot.settings
 
   return (
     <main className="trainer-page settings-page">
@@ -17,6 +18,7 @@ export function SettingsPage() {
           Viloläget visar logga och klocka. Under ett pass ligger klockan alltid
           digitalt uppe till höger.
         </p>
+        <SyncStatusBadge />
       </header>
 
       <form className="settings-form" onSubmit={(event) => event.preventDefault()}>
@@ -80,18 +82,16 @@ export function SettingsPage() {
           </select>
         </label>
 
-        <label className="field">
-          <span>Synk-rum (samma på Pi och tränardator)</span>
-          <input
-            value={syncRoom}
-            onChange={(event) => updateSettings({ syncRoom: event.target.value })}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
+        <p className="settings-note">
+          Kopplad till skärm {screenId}. Koden syns nere till höger på
+          gymskärmen i vila.
+        </p>
       </form>
 
-      <p>
+      <p className="trainer-footer">
+        <button className="button-ghost" type="button" onClick={unpairScreen}>
+          Byt skärm
+        </button>
         <Link className="button" to="/">
           Tillbaka till menyn
         </Link>

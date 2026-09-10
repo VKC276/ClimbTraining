@@ -24,13 +24,11 @@ Workflown i `.github/workflows/pages.yml` bygger från `main` och publicerar via
 
 ## Raspberry Pi
 
-Öppna gymskärmen i helskärm, till exempel:
-
 ```bash
 chromium-browser --kiosk --autoplay-policy=no-user-gesture-required --app=https://trainer.vastervikclimbing.se/display
 ```
 
-Pi och tränardator måste använda samma **synk-rum** (inställningar). Då följer storskärmen valet i kontrollpanelen.
+Gymskärmen visar ett **skärm-id** (fyra tecken) nere till höger i vila. Ange samma kod i kontrollpanelen på mobilen. Koden delas ut per fysisk enhet — att öppna `/display` på en annan dator ger ett annat id, inte hallens.
 
 ## Lokalt
 
@@ -39,5 +37,16 @@ npm install
 npm run dev
 ```
 
-Kontrollpanel: http://localhost:5173/
 Gymskärm: http://localhost:5173/display
+Kontrollpanel: http://localhost:5173/
+
+## Synk
+
+Mobil och Pi pratar via Cloudflare Worker (`sync-worker`). Varje gymskärm får ett eget unikt id.
+
+```bash
+npx wrangler login
+npm run deploy:sync
+```
+
+Uppdatera `defaultSyncUrl` i `src/gym/sync.ts` om Workers-adressen skiljer sig, och pusha `main` så Pages bygger om.
