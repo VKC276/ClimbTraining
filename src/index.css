@@ -101,7 +101,9 @@ a {
   color: #1a0d04;
   font: inherit;
   font-weight: 700;
+  text-align: center;
   text-decoration: none;
+  white-space: normal;
   cursor: pointer;
 }
 
@@ -345,7 +347,11 @@ a {
 }
 
 .activity-stage-fill {
-  min-height: calc(100svh - 2rem);
+  min-height: calc(100svh - 4rem);
+}
+
+.activity-stage-trainer.activity-stage-fill {
+  min-height: 0;
 }
 
 .activity-stage-display.activity-stage-fill {
@@ -468,8 +474,10 @@ a {
   opacity: 0.9;
 }
 
-.catch-hold-controls {
+.catch-hold-controls,
+.density-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
@@ -1109,6 +1117,7 @@ a {
 
 .choose-story-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -1299,11 +1308,6 @@ a {
   }
 }
 
-.density-controls {
-  display: flex;
-  gap: 0.75rem;
-}
-
 .trainer-page {
   width: min(1080px, calc(100% - 2rem));
   margin: 0 auto;
@@ -1368,7 +1372,8 @@ a {
   color: #7dffb0;
 }
 
-.trainer-footer {
+.trainer-footer,
+.activity-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -1472,10 +1477,64 @@ select,
 @media (max-width: 720px) {
   .activity-top {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .display-page {
     padding: 1rem;
+  }
+
+  .trainer-page {
+    width: calc(100% - 1.25rem);
+    padding: 1rem 0 max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .trainer-page h1 {
+    font-size: clamp(1.55rem, 8vw, 2.2rem);
+  }
+
+  .activity-stage-trainer {
+    gap: 1.2rem;
+  }
+
+  .activity-stage-trainer .digital-clock-overlay {
+    font-size: 1.45rem;
+  }
+
+  .activity-actions,
+  .density-controls,
+  .catch-hold-controls,
+  .trainer-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 0.65rem;
+  }
+
+  .activity-actions .button,
+  .activity-actions .button-ghost,
+  .density-controls .button,
+  .density-controls .button-ghost,
+  .catch-hold-controls .button,
+  .catch-hold-controls .button-ghost,
+  .trainer-footer .button,
+  .trainer-footer .button-ghost {
+    width: 100%;
+  }
+
+  .density-signal-row,
+  .tech-focus-add,
+  .choose-story-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .choose-story-actions {
+    display: grid;
+  }
+
+  .timer-preset {
+    font-size: 0.82rem;
+    padding-inline: 0.25rem;
   }
 }
 
