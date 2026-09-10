@@ -16,12 +16,13 @@ Byt ut `public/logo.svg` mot föreningens riktiga logga när ni har en fil redo.
 
 ## GitHub Pages
 
-1. Skapa ett GitHub-repo och pusha `main`.
-2. Under **Settings → Pages** välj **GitHub Actions** som källa.
-3. Peka DNS: CNAME `trainer` → `<org-eller-användare>.github.io`.
-4. Under Pages, sätt custom domain till `trainer.vastervikclimbing.se` och vänta på HTTPS.
+Workflown i `.github/workflows/pages.yml` bygger sajten och publicerar grenen `gh-pages` vid varje push till `main`.
 
-Workflown i `.github/workflows/pages.yml` bygger och publicerar vid varje push till `main`.
+1. Efter första lyckade körningen: **Settings → Pages**.
+2. **Build and deployment → Source:** Deploy from a branch.
+3. Branch: `gh-pages`, folder: `/ (root)`. Spara.
+4. Peka DNS: CNAME `trainer` → `vkc276.github.io`.
+5. Sätt custom domain till `trainer.vastervikclimbing.se` och vänta på HTTPS.
 
 ## Raspberry Pi
 
