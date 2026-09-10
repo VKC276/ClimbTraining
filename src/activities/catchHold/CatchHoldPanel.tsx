@@ -1,0 +1,258 @@
+import { useEffect, useRef } from 'react'
+import { useGym } from '../../gym/GymContext'
+import { useNow } from '../../hooks/useNow'
+import {
+  catchHoldColors,
+  getCatchHoldColor,
+  idleCatchHoldSession,
+  isLightHex,
+  pickCatchHoldColor,
+  type CatchHoldColorId,
+} from './model'
+import { speakColorName } from './speech'
+
+type CatchHoldPanelProps = {
+  variant: 'display' | 'trainer'
+}
+
+export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
+  const now = useNow(80)
+  const { snapshot, updateCatchHold, setCatchHoldSession } = useGym()
+  const config = snapshot.settings.catchHold
+  const session = snapshot.catchHoldSession
+  const stageRef = useRef<HTMLDivElement>(null)
+  const running = session.phase === 'countdown' || session.phase === 'color'
+  const color = getCatchHoldColor(session.colorId)
+  const remaining = Math.max(0, Math.ceil((session.phaseEndsAt - now.getTime()) / 1000))
+  const light = color ? isLightHex(color.hex) : false
+
+  useEffect(() => {
+    if (variant !== 'trainer' || !running) return
+    const id = window.setInterval(() => {
+      const current = snapshot.catchHoldSession
+      if (Date.now() < current.phaseEndsAt) return
+      if (current.phase === 'countdown') {
+        const colorId = pickCatchHoldColor(config.colorIds, current.colorId)
+        setCatchHoldSession({
+          phase: 'color',
+          round: current.round,
+          colorId,
+          phaseEndsAt: Date.now() + config.betweenRoundsSeconds * 1000,
+        })
+        return
+      }
+      if (current.phase === 'color') {
+        if (current.round >= config.rounds) {
+          setCatchHoldSession({
+            phase: 'done',
+            round: current.round,
+            colorId: current.colorId,
+            phaseEndsAt: 0,
+          })
+          return
+        }
+        setCatchHoldSession({
+          phase: 'countdown',
+          round: current.round + 1,
+          colorId: null,
+          phaseEndsAt: Date.now() + config.countdownSeconds * 1000,
+        })
+      }
+    }, 50)
+    return () => window.clearInterval(id)
+  }, [
+    variant,
+    running,
+    snapshot.catchHoldSession,
+    config.colorIds,
+    config.betweenRoundsSeconds,
+    config.rounds,
+    config.countdownSeconds,
+    setCatchHoldSession,
+  ])
+
+  useEffect(() => {
+    const root = stageRef.current?.closest('.activity-stage')
+    if (!(root instanceof HTMLElement)) return
+    if (session.phase === 'color' && color) {
+      root.style.background = color.hex
+      root.style.color = light ? '#111111' : '#ffffff'
+      root.classList.toggle('catch-hold-light', light)
+    } else {
+      root.style.background = ''
+      root.style.color = ''
+      root.classList.remove('catch-hold-light')
+    }
+    return () => {
+      root.style.background = ''
+      root.style.color = ''
+      root.classList.remove('catch-hold-light')
+    }
+  }, [session.phase, color, light])
+
+  useEffect(() => {
+    if (variant !== 'display') return
+    if (!config.soundOn || session.phase !== 'color' || !color) return
+
+    const speak = () => speakColorName(color.name)
+    speak()
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true })
+      return () => window.speechSynthesis.removeEventListener('voiceschanged', speak)
+    }
+    return undefined
+  }, [variant, config.soundOn, session.phase, session.round, color])
+
+  const startGame = () => {
+    setCatchHoldSession({
+      phase: 'countdown',
+      round: 1,
+      colorId: null,
+      phaseEndsAt: Date.now() + config.countdownSeconds * 1000,
+    })
+  }
+
+  const stopGame = () => setCatchHoldSession({ ...idleCatchHoldSession })
+
+  const toggleColor = (id: CatchHoldColorId) => {
+    const selected = config.colorIds.includes(id)
+      ? config.colorIds.filter((item) => item !== id)
+      : [...config.colorIds, id]
+    if (selected.length === 0) return
+    updateCatchHold({ colorIds: selected })
+  }
+
+  return (
+    <div className={`catch-hold catch-hold-${variant}`} ref={stageRef}>
+      {variant === 'trainer' && !running ? (
+        <form className="catch-hold-settings" onSubmit={(event) => event.preventDefault()}>
+          <fieldset>
+            <legend>Färger</legend>
+            <div className="catch-hold-swatches">
+              {catchHoldColors.map((item) => {
+                const on = config.colorIds.includes(item.id)
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={on ? 'catch-swatch on' : 'catch-swatch'}
+                    style={{ background: item.hex, color: isLightHex(item.hex) ? '#111' : '#fff' }}
+                    onClick={() => toggleColor(item.id)}
+                    aria-pressed={on}
+                  >
+                    {item.name}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          <label className="field">
+            <span>Nedräkningstid (sekunder)</span>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={config.countdownSeconds}
+              onChange={(event) =>
+                updateCatchHold({ countdownSeconds: Number(event.target.value) })
+              }
+            />
+          </label>
+
+          <label className="field">
+            <span>Antal omgångar</span>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              step={1}
+              value={config.rounds}
+              onChange={(event) => updateCatchHold({ rounds: Number(event.target.value) })}
+            />
+          </label>
+
+          <label className="field">
+            <span>Tid mellan omgångar (sekunder)</span>
+            <input
+              type="number"
+              min={1}
+              max={300}
+              step={1}
+              value={config.betweenRoundsSeconds}
+              onChange={(event) =>
+                updateCatchHold({ betweenRoundsSeconds: Number(event.target.value) })
+              }
+            />
+          </label>
+
+          <label className={config.soundOn ? 'choice selected' : 'choice'}>
+            <input
+              type="checkbox"
+              checked={config.soundOn}
+              onChange={(event) => updateCatchHold({ soundOn: event.target.checked })}
+            />
+            Ljud på (t.ex. ”Blå!”)
+          </label>
+        </form>
+      ) : null}
+
+      <div
+        className={
+          light ? 'catch-hold-stage catch-hold-light' : 'catch-hold-stage'
+        }
+        style={
+          session.phase === 'color' && color
+            ? { background: color.hex, color: light ? '#111' : '#fff' }
+            : undefined
+        }
+      >
+        {session.phase === 'idle' ? (
+          <p className="catch-hold-wait">
+            {variant === 'trainer'
+              ? 'Starta när deltagarna är redo.'
+              : 'Titta på skärmen och fånga rätt färg.'}
+          </p>
+        ) : null}
+
+        {session.phase === 'countdown' ? (
+          <>
+            <p className="catch-hold-round">
+              Omgång {session.round} / {config.rounds}
+            </p>
+            <p className="catch-hold-count">{Math.max(1, remaining)}</p>
+          </>
+        ) : null}
+
+        {session.phase === 'color' && color ? (
+          <>
+            <p className="catch-hold-round">
+              Omgång {session.round} / {config.rounds}
+            </p>
+            <p className="catch-hold-name">{color.name}!</p>
+            <p className="catch-hold-next">Nästa omgång om {remaining} s</p>
+          </>
+        ) : null}
+
+        {session.phase === 'done' ? (
+          <p className="catch-hold-name">Klart!</p>
+        ) : null}
+      </div>
+
+      {variant === 'trainer' ? (
+        <div className="catch-hold-controls">
+          {running ? (
+            <button className="button" type="button" onClick={stopGame}>
+              Stoppa
+            </button>
+          ) : (
+            <button className="button" type="button" onClick={startGame}>
+              {session.phase === 'done' ? 'Kör igen' : 'Starta'}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
