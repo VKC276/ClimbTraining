@@ -1,13 +1,47 @@
 import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
-import { clampDisplayZoom, displayZoomMax, displayZoomMin, idleTimeoutOptions } from '../gym/defaults'
+import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
 import type { ClockStyle } from '../types'
 
+function SizeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="field">
+      <span>
+        {label} {value} %
+      </span>
+      <input
+        type="range"
+        min={idleSizeMin}
+        max={idleSizeMax}
+        step={5}
+        value={value}
+        onChange={(event) => onChange(clampIdleSize(Number(event.target.value)))}
+      />
+    </label>
+  )
+}
+
 export function SettingsPage() {
   const { snapshot, updateSettings, screenId, unpairScreen } = useGym()
-  const { clockStyle, idleTimeoutMinutes, displayZoom, fontId, displayHardware } = snapshot.settings
+  const {
+    clockStyle,
+    idleTimeoutMinutes,
+    idleLogoSize,
+    idleClockSize,
+    idleScreenIdSize,
+    fontId,
+    displayHardware,
+  } = snapshot.settings
 
   const patchHardware = (partial: Partial<typeof displayHardware>) => {
     updateSettings({
@@ -88,48 +122,37 @@ export function SettingsPage() {
           </select>
         </label>
 
-        <label className="field">
-          <span>Grafikstorlek på gymskärmen {displayZoom} %</span>
-          <input
-            type="range"
-            min={displayZoomMin}
-            max={displayZoomMax}
-            step={5}
-            value={displayZoom}
-            onChange={(event) =>
-              updateSettings({ displayZoom: clampDisplayZoom(Number(event.target.value)) })
-            }
+        <fieldset>
+          <legend>Storlek i vila</legend>
+          <p className="settings-note">
+            Gäller bara gymskärmen. På en 5K-TV behöver logga och klocka oftast
+            höjas var för sig.
+          </p>
+          <SizeField
+            label="Logga"
+            value={idleLogoSize}
+            onChange={(idleLogoSize) => updateSettings({ idleLogoSize })}
           />
-        </label>
-        <div className="hdmi-toggle">
-          <button
-            className="button-ghost"
-            type="button"
-            onClick={() =>
-              updateSettings({ displayZoom: clampDisplayZoom(displayZoom - 25) })
-            }
-          >
-            Mindre
-          </button>
-          <button
-            className="button-ghost"
-            type="button"
-            onClick={() =>
-              updateSettings({ displayZoom: clampDisplayZoom(displayZoom + 25) })
-            }
-          >
-            Större
-          </button>
-        </div>
+          <SizeField
+            label="Klocka"
+            value={idleClockSize}
+            onChange={(idleClockSize) => updateSettings({ idleClockSize })}
+          />
+          <SizeField
+            label="Skärmnummer"
+            value={idleScreenIdSize}
+            onChange={(idleScreenIdSize) => updateSettings({ idleScreenIdSize })}
+          />
+        </fieldset>
 
         <fieldset>
           <legend>Gymskärm (Pi)</legend>
           <p className="settings-note">
-            Styr volym och skärm på/av via HDMI-CEC. Pi:n måste köra gym-scriptet.
-            På LG: slå på SIMPLINK (CEC).
+            Volym och skärm på/av går till TV:n via HDMI-CEC. Pi-ljudet hålls
+            öppet så pip når skärmen.
           </p>
           <label className="field">
-            <span>Volym {displayHardware.volume} %</span>
+            <span>TV-volym {displayHardware.volume} %</span>
             <input
               type="range"
               min={0}

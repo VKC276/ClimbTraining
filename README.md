@@ -53,11 +53,11 @@ Under **System Options → Boot / Auto Login** välj **Desktop autologin**. Star
 
 Logg om det inte startar: `cat ~/.vvk-gym-display.log`
 
-Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i **helskärm** (inte kiosk). F11 eller Alt+Tab räcker om du behöver skrivbordet; kör scriptet igen för att gå tillbaka till helskärm. Volym och skärm på/av går bara över HDMI-CEC.
+Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i **helskärm** (inte kiosk). F11 eller Alt+Tab räcker om du behöver skrivbordet; kör scriptet igen för att gå tillbaka till helskärm. Volymreglaget styr TV:ns egen volym via HDMI-CEC. Skärm på/av går samma väg.
 
-Grafikstorlek ställs under **Inställningar** (t.ex. 200 % på en 5K-skärm) och synkas till gymskärmen.
+Grafikstorlek för logga, klocka och skärm-id i vila ställs var för sig under **Inställningar**.
 
-På testskärmen (t.ex. LG): slå på **SIMPLINK / HDMI-CEC**. Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema.
+Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema via HDMI-CEC.
 
 ## Lokalt
 

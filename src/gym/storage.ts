@@ -22,7 +22,7 @@ import {
   SETTINGS_STORAGE_KEY,
   defaultSettings,
   defaultSnapshot,
-  clampDisplayZoom,
+  clampIdleSize,
 } from './defaults'
 
 function isClockStyle(value: unknown): value is GymSettings['clockStyle'] {
@@ -42,8 +42,20 @@ export function normalizeSettings(partial?: Partial<GymSettings>): GymSettings {
       partial?.idleTimeoutMinutes,
       defaultSettings.idleTimeoutMinutes,
     ),
-    displayZoom: clampDisplayZoom(
-      asFiniteNumber(partial?.displayZoom, defaultSettings.displayZoom),
+    idleLogoSize: clampIdleSize(
+      asFiniteNumber(
+        partial?.idleLogoSize ?? (partial as { displayZoom?: number })?.displayZoom,
+        defaultSettings.idleLogoSize,
+      ),
+    ),
+    idleClockSize: clampIdleSize(
+      asFiniteNumber(
+        partial?.idleClockSize ?? (partial as { displayZoom?: number })?.displayZoom,
+        defaultSettings.idleClockSize,
+      ),
+    ),
+    idleScreenIdSize: clampIdleSize(
+      asFiniteNumber(partial?.idleScreenIdSize, defaultSettings.idleScreenIdSize),
     ),
     syncRoom:
       typeof partial?.syncRoom === 'string' && partial.syncRoom.trim()

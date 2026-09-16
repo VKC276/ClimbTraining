@@ -157,7 +157,7 @@ a {
 
 .idle-logo {
   display: block;
-  width: min(38vw, 320px);
+  width: calc(min(38vw, 320px) * var(--idle-logo-scale, 1));
   height: auto;
   color: var(--logo);
   overflow: visible;
@@ -165,11 +165,11 @@ a {
 }
 
 .idle-center .analog-clock {
-  width: min(46vw, 42vh, 360px);
+  width: calc(min(46vw, 42vh, 360px) * var(--idle-clock-scale, 1));
 }
 
 .idle-center .digital-clock-idle {
-  font-size: clamp(4rem, 12vw, 8.5rem);
+  font-size: calc(clamp(4rem, 12vw, 8.5rem) * var(--idle-clock-scale, 1));
 }
 
 .trainer-logo {
@@ -180,7 +180,7 @@ a {
 
 .idle-date {
   color: var(--muted);
-  font-size: clamp(1.1rem, 2.4vw, 1.8rem);
+  font-size: calc(clamp(1.1rem, 2.4vw, 1.8rem) * var(--idle-clock-scale, 1));
   text-transform: capitalize;
 }
 
@@ -191,7 +191,7 @@ a {
   margin: 0;
   color: rgba(244, 239, 230, 0.38);
   font-family: var(--display);
-  font-size: 0.95rem;
+  font-size: calc(0.95rem * var(--idle-id-scale, 1));
   font-weight: 700;
   letter-spacing: 0.28em;
   font-variant-numeric: tabular-nums;

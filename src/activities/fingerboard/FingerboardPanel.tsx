@@ -36,6 +36,7 @@ export function FingerboardPanel({ variant }: FingerboardPanelProps) {
   )
   const hang = session.kind === 'hang'
   const handledEnd = useRef('')
+  const armedSignal = useRef(true)
 
   useEffect(() => {
     if (variant !== 'trainer' || !running) return
@@ -61,6 +62,28 @@ export function FingerboardPanel({ variant }: FingerboardPanelProps) {
     snapshot.fingerboardSession,
     config,
     setFingerboardSession,
+  ])
+
+  useEffect(() => {
+    if (variant !== 'display' || !running) return
+    if (remaining > 1) {
+      armedSignal.current = true
+      return
+    }
+    if (remaining > 0 || !armedSignal.current) return
+    armedSignal.current = false
+    const nextHang = session.kind !== 'hang'
+    void playDensitySignal(
+      nextHang ? config.hangSignal : config.restSignal,
+      nextHang ? 'go' : 'vila',
+    )
+  }, [
+    variant,
+    running,
+    remaining,
+    session.kind,
+    config.hangSignal,
+    config.restSignal,
   ])
 
   const startGame = () => {

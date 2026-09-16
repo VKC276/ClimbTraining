@@ -29,7 +29,9 @@ export type ClockStyle = 'analog' | 'digital'
 export type GymSettings = {
   clockStyle: ClockStyle
   idleTimeoutMinutes: number
-  displayZoom: number
+  idleLogoSize: number
+  idleClockSize: number
+  idleScreenIdSize: number
   syncRoom: string
   fontId: FontId
   displayHardware: DisplayHardware

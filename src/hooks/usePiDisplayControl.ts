@@ -34,8 +34,9 @@ export function usePiDisplayControl(
     const timer = window.setTimeout(
       () => {
         lastSent.current = payload
-        void pushToPi(hardware).catch(() => {
+        void pushToPi(hardware).catch((error) => {
           lastSent.current = ''
+          console.warn('Pi-hjälparen nås inte', error)
         })
       },
       powerChanged ? 0 : 500,

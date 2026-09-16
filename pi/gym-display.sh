@@ -26,6 +26,17 @@ fi
 log "startar gymskärm (DISPLAY=${DISPLAY} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-})"
 sleep 4
 
+if command -v pactl >/dev/null; then
+  SINK="$(pactl list short sinks 2>/dev/null | awk 'tolower($0) ~ /hdmi/ { print $2; exit }')"
+  if [[ -n "${SINK:-}" ]]; then
+    pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
+    pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+    log "ljud till HDMI-sink $SINK"
+  else
+    log "ingen HDMI-sink i Pulse — kolla ljudutgång i skrivbordsinställningar"
+  fi
+fi
+
 if ! command -v cec-client >/dev/null; then
   log "tips: sudo apt install cec-utils"
 fi

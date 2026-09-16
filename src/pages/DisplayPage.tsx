@@ -14,10 +14,17 @@ export function DisplayPage() {
   const { snapshot, bumpInteraction, syncStatus, screenId, updateSettings } = useGym()
   const activity = getActivity(snapshot.activityId)
   const hardware = snapshot.settings.displayHardware
-  const displayZoom = snapshot.settings.displayZoom
+  const { idleLogoSize, idleClockSize, idleScreenIdSize, clockStyle } = snapshot.settings
 
   useIdleTimeout()
   useWakeLock(true)
+  useEffect(() => {
+    void unlockDensityAudio()
+    const id = window.setInterval(() => {
+      void unlockDensityAudio()
+    }, 20_000)
+    return () => window.clearInterval(id)
+  }, [])
   usePiDisplayControl(
     hardware,
     useCallback(
@@ -29,13 +36,6 @@ export function DisplayPage() {
       [hardware, updateSettings],
     ),
   )
-
-  useEffect(() => {
-    document.documentElement.style.zoom = String(displayZoom / 100)
-    return () => {
-      document.documentElement.style.zoom = ''
-    }
-  }, [displayZoom])
 
   useEffect(() => {
     const onInteract = () => {
@@ -77,8 +77,11 @@ export function DisplayPage() {
       ) : (
         <IdleScreen
           time={now}
-          clockStyle={snapshot.settings.clockStyle}
+          clockStyle={clockStyle}
           screenId={screenId ?? ''}
+          logoSize={idleLogoSize}
+          clockSize={idleClockSize}
+          screenIdSize={idleScreenIdSize}
         />
       )}
     </main>

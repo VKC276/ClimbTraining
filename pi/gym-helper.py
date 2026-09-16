@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Lokal hjälpare på Pi: HDMI-CEC (på/av + volym). Lyssnar bara på 127.0.0.1.
-
-Enstaka korta CEC-anrop. Ingen persistent cec-client, inget Active Source —
-det brukar fälla HDMI-stacken på Pi 4.
-"""
+"""Lokal hjälpare på Pi: CEC för skärm på/av och TV-volym."""
 
 from __future__ import annotations
 
@@ -19,7 +15,6 @@ from pathlib import Path
 HOST = "127.0.0.1"
 PORT = 8743
 STATE_PATH = Path.home() / ".vvk-gym-pi.json"
-CEC_DEV = "/dev/cec0"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
 STATE = {
@@ -30,6 +25,7 @@ STATE = {
     "offTime": "22:00",
     "cecVolume": None,
     "cecHdmi": None,
+    "lastCec": "",
 }
 
 
@@ -37,90 +33,160 @@ def log(message: str) -> None:
     print(message, flush=True)
 
 
-def run_quiet(command: list[str], stdin: bytes | None = None) -> bool:
+def run_logged(command: list[str], stdin: bytes | None = None) -> tuple[bool, str]:
     try:
-        subprocess.run(
+        result = subprocess.run(
             command,
             input=stdin,
             check=False,
             capture_output=True,
-            timeout=6,
+            timeout=8,
         )
-        return True
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+    except (OSError, subprocess.TimeoutExpired) as error:
+        text = str(error)
+        log(f"kommando fel: {command[0]} {text}")
+        return False, text
+    text = (result.stdout + result.stderr).decode("utf-8", errors="replace").strip()
+    if result.returncode != 0:
+        log(f"exit {result.returncode}: {' '.join(command)}\n{text[-500:]}")
+        return False, text
+    return True, text
 
 
-def has_cec_ctl() -> bool:
-    return bool(shutil.which("cec-ctl") and os.path.exists(CEC_DEV))
+def cec_devices() -> list[str]:
+    return [path for path in ("/dev/cec0", "/dev/cec1") if os.path.exists(path)]
 
 
-def cec_ctl(*extra: str) -> bool:
-    command = [
-        shutil.which("cec-ctl") or "cec-ctl",
-        "--device",
-        CEC_DEV,
-        "--skip-info",
-        "--to",
-        "0",
-        *extra,
-    ]
-    return run_quiet(command)
+def cec_ctl(device: str, dest: str, *extra: str) -> tuple[bool, str]:
+    ctl = shutil.which("cec-ctl")
+    if not ctl:
+        return False, ""
+    return run_logged(
+        [
+            ctl,
+            "--device",
+            device,
+            "--playback",
+            "--skip-info",
+            "--to",
+            dest,
+            *extra,
+        ]
+    )
 
 
-def cec_client_line(line: str) -> bool:
+def send_cec(extra: tuple[str, ...], client_line: str, dests: tuple[str, ...] = ("0",)) -> bool:
+    ctl = shutil.which("cec-ctl")
+    devices = cec_devices()
+    if ctl and devices:
+        for device in devices:
+            for dest in dests:
+                ok, text = cec_ctl(device, dest, *extra)
+                if ok:
+                    STATE["lastCec"] = f"{device} to={dest} {' '.join(extra)} ok"
+                    return True
+                STATE["lastCec"] = f"{device} to={dest} fail {text[-80:]}"
     cec = shutil.which("cec-client")
-    if not cec:
-        return False
-    return run_quiet([cec, "-s", "-d", "1"], stdin=f"{line}\n".encode("ascii"))
+    if cec:
+        ok, text = run_logged(
+            [cec, "-s", "-d", "1"],
+            stdin=f"{client_line}\n".encode("ascii"),
+        )
+        STATE["lastCec"] = f"cec-client {client_line} {'ok' if ok else text[-80:]}"
+        return ok
+    STATE["lastCec"] = "ingen CEC-enhet"
+    return False
 
 
 def send_power(on: bool) -> bool:
     with CEC_LOCK:
-        if has_cec_ctl():
-            if on:
-                ok = cec_ctl("--user-control-pressed", "ui-cmd=power")
-            else:
-                ok = cec_ctl("--standby")
-        else:
-            ok = cec_client_line("on 0" if on else "standby 0")
+        ok = send_cec(
+            ("--image-view-on",) if on else ("--standby",),
+            "on 0" if on else "standby 0",
+        )
         log(("CEC skärm på" if on else "CEC skärm av") + ("" if ok else " misslyckades"))
         return ok
 
 
-def send_volume_step(up: bool) -> bool:
-    with CEC_LOCK:
-        if has_cec_ctl():
-            cmd = "volume-up" if up else "volume-down"
-            ok = cec_ctl("--user-control-pressed", f"ui-cmd={cmd}")
-        else:
-            ok = cec_client_line("volup" if up else "voldown")
-        return ok
+def send_tv_volume_step(up: bool) -> bool:
+    cmd = "volume-up" if up else "volume-down"
+    line = "volup" if up else "voldown"
+    return send_cec(
+        ("--user-control-pressed", f"ui-cmd={cmd}"),
+        line,
+        dests=("0", "5"),
+    )
 
 
-def apply_volume(target: int, previous: int) -> None:
+def apply_tv_volume(target: int, previous: int) -> None:
     target = max(0, min(100, int(target)))
     delta = target - int(previous)
     if delta == 0:
         return
-    steps = min(3, max(1, abs(delta) // 15))
+    if target == 0:
+        with CEC_LOCK:
+            ok = send_cec(
+                ("--user-control-pressed", "ui-cmd=mute"),
+                "mute",
+                dests=("0", "5"),
+            )
+        log("CEC tyst" if ok else "CEC mute misslyckades")
+        return
+    steps = min(8, max(1, abs(delta) // 8))
     up = delta > 0
     ok = True
-    for index in range(steps):
-        if index:
-            time.sleep(0.35)
-        if not send_volume_step(up):
-            ok = False
-            break
+    with CEC_LOCK:
+        for index in range(steps):
+            if index:
+                time.sleep(0.28)
+            if not send_tv_volume_step(up):
+                ok = False
+                break
     log(
-        f"CEC volym {previous} → {target} ({steps} tryck)"
+        f"CEC TV-volym {previous} → {target} ({steps} tryck)"
         if ok
-        else "CEC volym misslyckades"
+        else "CEC TV-volym misslyckades"
     )
 
 
+def hdmi_sink() -> str | None:
+    pactl = shutil.which("pactl")
+    if not pactl:
+        return None
+    ok, text = run_logged([pactl, "list", "short", "sinks"])
+    if not ok:
+        return "@DEFAULT_SINK@"
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        name = parts[1]
+        if "hdmi" in name.lower():
+            return name
+    return "@DEFAULT_SINK@"
+
+
+def unmute_pi_hdmi() -> None:
+    """Håll Pi-ljudet öppet så pip når TV:n; nivån styrs på skärmen."""
+    pactl = shutil.which("pactl")
+    if pactl:
+        sink = hdmi_sink() or "@DEFAULT_SINK@"
+        run_logged([pactl, "set-default-sink", sink])
+        run_logged([pactl, "set-sink-mute", sink, "0"])
+        run_logged([pactl, "set-sink-volume", sink, "100%"])
+        log(f"Pi HDMI öppen ({sink})")
+        return
+    wpctl = shutil.which("wpctl")
+    if wpctl:
+        run_logged([wpctl, "set-mute", "@DEFAULT_AUDIO_SINK@", "0"])
+        run_logged([wpctl, "set-volume", "@DEFAULT_AUDIO_SINK@", "1.0"])
+
+
 def save_state() -> None:
-    STATE_PATH.write_text(json.dumps(STATE), encoding="utf-8")
+    STATE_PATH.write_text(
+        json.dumps({key: value for key, value in STATE.items() if key != "lastCec"}),
+        encoding="utf-8",
+    )
 
 
 def load_state() -> None:
@@ -134,6 +200,16 @@ def load_state() -> None:
         STATE.update(loaded)
         STATE["cecVolume"] = STATE.get("volume")
         STATE["cecHdmi"] = STATE.get("hdmiOn")
+
+
+def probe_cec() -> None:
+    devices = cec_devices()
+    log(f"CEC-enheter: {', '.join(devices) or 'inga /dev/cec*'}")
+    ctl = shutil.which("cec-ctl")
+    if ctl and devices:
+        run_logged([ctl, "--device", devices[0], "--skip-info"])
+    elif not shutil.which("cec-client") and not ctl:
+        log("Ingen CEC-binär. sudo apt install cec-utils v4l-utils")
 
 
 def worker() -> None:
@@ -150,7 +226,7 @@ def worker() -> None:
                 STATE["cecHdmi"] = hdmi
                 save_state()
         if last_volume is not None and int(last_volume) != volume:
-            apply_volume(volume, int(last_volume))
+            apply_tv_volume(volume, int(last_volume))
             with LOCK:
                 STATE["cecVolume"] = volume
                 save_state()
@@ -181,7 +257,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         with LOCK:
-            body = json.dumps({"ok": True, **STATE})
+            body = json.dumps({"ok": True, **STATE, "cecDevices": cec_devices()})
         self.wfile.write(body.encode())
 
     def do_POST(self) -> None:
@@ -197,6 +273,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             return
+        log(f"kommando {payload}")
         with LOCK:
             for key in ("volume", "hdmiOn", "scheduleEnabled", "onTime", "offTime"):
                 if key in payload:
@@ -249,12 +326,12 @@ def scheduler() -> None:
 
 def main() -> None:
     load_state()
-    if not shutil.which("cec-client") and not has_cec_ctl():
-        log("Ingen CEC-binär. sudo apt install cec-utils v4l-utils")
+    probe_cec()
+    unmute_pi_hdmi()
     threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=scheduler, daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    log(f"vvk gym helper on http://{HOST}:{PORT} (CEC, skonsam)")
+    log(f"vvk gym helper on http://{HOST}:{PORT}")
     server.serve_forever()
 
 

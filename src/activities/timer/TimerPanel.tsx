@@ -35,6 +35,7 @@ export function TimerPanel({ variant }: TimerPanelProps) {
   const remaining = remainingSeconds(config, session, now.getTime())
   const warning = running && remaining <= 10
   const handledEnd = useRef('')
+  const armedSignal = useRef(true)
 
   useEffect(() => {
     if (variant !== 'trainer' || !running) return
@@ -55,6 +56,17 @@ export function TimerPanel({ variant }: TimerPanelProps) {
     config,
     setTimerSession,
   ])
+
+  useEffect(() => {
+    if (variant !== 'display' || !running) return
+    if (remaining > 1) {
+      armedSignal.current = true
+      return
+    }
+    if (remaining > 0 || !armedSignal.current) return
+    armedSignal.current = false
+    void playDensitySignal(config.doneSignal, 'vila')
+  }, [variant, running, remaining, config.doneSignal])
 
   const startGame = () => {
     void unlockDensityAudio()
