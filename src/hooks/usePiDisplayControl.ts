@@ -23,15 +23,24 @@ export function usePiDisplayControl(
   updateHdmiOn: (hdmiOn: boolean) => void,
 ) {
   const lastSent = useRef('')
+  const lastHdmi = useRef(hardware.hdmiOn)
   const lastScheduleMinute = useRef('')
 
   useEffect(() => {
     const payload = JSON.stringify(hardware)
     if (payload === lastSent.current) return
-    lastSent.current = payload
-    void pushToPi(hardware).catch(() => {
-      lastSent.current = ''
-    })
+    const powerChanged = hardware.hdmiOn !== lastHdmi.current
+    lastHdmi.current = hardware.hdmiOn
+    const timer = window.setTimeout(
+      () => {
+        lastSent.current = payload
+        void pushToPi(hardware).catch(() => {
+          lastSent.current = ''
+        })
+      },
+      powerChanged ? 0 : 500,
+    )
+    return () => window.clearTimeout(timer)
   }, [hardware])
 
   useEffect(() => {

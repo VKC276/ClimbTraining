@@ -22,6 +22,7 @@ import {
   SETTINGS_STORAGE_KEY,
   defaultSettings,
   defaultSnapshot,
+  clampDisplayZoom,
 } from './defaults'
 
 function isClockStyle(value: unknown): value is GymSettings['clockStyle'] {
@@ -40,6 +41,9 @@ export function normalizeSettings(partial?: Partial<GymSettings>): GymSettings {
     idleTimeoutMinutes: asFiniteNumber(
       partial?.idleTimeoutMinutes,
       defaultSettings.idleTimeoutMinutes,
+    ),
+    displayZoom: clampDisplayZoom(
+      asFiniteNumber(partial?.displayZoom, defaultSettings.displayZoom),
     ),
     syncRoom:
       typeof partial?.syncRoom === 'string' && partial.syncRoom.trim()

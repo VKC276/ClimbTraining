@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
-import { idleTimeoutOptions } from '../gym/defaults'
+import { clampDisplayZoom, displayZoomMax, displayZoomMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
 import type { ClockStyle } from '../types'
 
 export function SettingsPage() {
   const { snapshot, updateSettings, screenId, unpairScreen } = useGym()
-  const { clockStyle, idleTimeoutMinutes, fontId, displayHardware } = snapshot.settings
+  const { clockStyle, idleTimeoutMinutes, displayZoom, fontId, displayHardware } = snapshot.settings
 
   const patchHardware = (partial: Partial<typeof displayHardware>) => {
     updateSettings({
@@ -87,6 +87,40 @@ export function SettingsPage() {
             ))}
           </select>
         </label>
+
+        <label className="field">
+          <span>Grafikstorlek på gymskärmen {displayZoom} %</span>
+          <input
+            type="range"
+            min={displayZoomMin}
+            max={displayZoomMax}
+            step={5}
+            value={displayZoom}
+            onChange={(event) =>
+              updateSettings({ displayZoom: clampDisplayZoom(Number(event.target.value)) })
+            }
+          />
+        </label>
+        <div className="hdmi-toggle">
+          <button
+            className="button-ghost"
+            type="button"
+            onClick={() =>
+              updateSettings({ displayZoom: clampDisplayZoom(displayZoom - 25) })
+            }
+          >
+            Mindre
+          </button>
+          <button
+            className="button-ghost"
+            type="button"
+            onClick={() =>
+              updateSettings({ displayZoom: clampDisplayZoom(displayZoom + 25) })
+            }
+          >
+            Större
+          </button>
+        </div>
 
         <fieldset>
           <legend>Gymskärm (Pi)</legend>

@@ -28,7 +28,7 @@ Klona repot (ingen Node-installation behövs — scriptet öppnar den publicerad
 
 ```bash
 sudo apt update
-sudo apt install -y git cec-utils
+sudo apt install -y git cec-utils v4l-utils
 git clone https://github.com/VKC276/ClimbTraining.git ~/ClimbTraining
 chmod +x ~/ClimbTraining/pi/gym-display.sh ~/ClimbTraining/pi/gym-helper.py
 ~/ClimbTraining/pi/gym-display.sh
@@ -41,24 +41,21 @@ cd ~/ClimbTraining
 git pull
 ```
 
-Autostart:
+Autostart (labwc på nyare Raspberry Pi OS ignorerar `~/.config/autostart`):
 
 ```bash
-mkdir -p ~/.config/autostart
-nano ~/.config/autostart/gym-display.desktop
+chmod +x ~/ClimbTraining/pi/install-autostart.sh
+~/ClimbTraining/pi/install-autostart.sh
+sudo raspi-config
 ```
 
-```ini
-[Desktop Entry]
-Type=Application
-Name=Gymskärm
-Exec=/home/pi/ClimbTraining/pi/gym-display.sh
-X-GNOME-Autostart-enabled=true
-```
+Under **System Options → Boot / Auto Login** välj **Desktop autologin**. Starta om.
 
-Byt `/home/pi` om Pi-användaren heter något annat.
+Logg om det inte startar: `cat ~/.vvk-gym-display.log`
 
-Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i kiosk. Volym och skärm på/av går bara över HDMI-CEC (ingen RS-232/nätverksstyrning).
+Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i **helskärm** (inte kiosk). F11 eller Alt+Tab räcker om du behöver skrivbordet; kör scriptet igen för att gå tillbaka till helskärm. Volym och skärm på/av går bara över HDMI-CEC.
+
+Grafikstorlek ställs under **Inställningar** (t.ex. 200 % på en 5K-skärm) och synkas till gymskärmen.
 
 På testskärmen (t.ex. LG): slå på **SIMPLINK / HDMI-CEC**. Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema.
 

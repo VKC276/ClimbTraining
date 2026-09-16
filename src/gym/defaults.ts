@@ -32,6 +32,7 @@ export const DEFAULT_SYNC_ROOM = 'vastervikclimbing-gym'
 export const defaultSettings: GymSettings = {
   clockStyle: 'analog',
   idleTimeoutMinutes: 5,
+  displayZoom: 100,
   syncRoom: DEFAULT_SYNC_ROOM,
   fontId: defaultFontId,
   displayHardware: { ...defaultDisplayHardware },
@@ -82,3 +83,10 @@ export function defaultSnapshot(now = Date.now()): GymSnapshot {
 }
 
 export const idleTimeoutOptions = [1, 2, 5, 10, 15, 30, 60]
+export const displayZoomMin = 75
+export const displayZoomMax = 300
+
+export function clampDisplayZoom(value: number) {
+  const rounded = Math.round(value / 5) * 5
+  return Math.min(displayZoomMax, Math.max(displayZoomMin, rounded))
+}

@@ -14,6 +14,7 @@ export function DisplayPage() {
   const { snapshot, bumpInteraction, syncStatus, screenId, updateSettings } = useGym()
   const activity = getActivity(snapshot.activityId)
   const hardware = snapshot.settings.displayHardware
+  const displayZoom = snapshot.settings.displayZoom
 
   useIdleTimeout()
   useWakeLock(true)
@@ -28,6 +29,13 @@ export function DisplayPage() {
       [hardware, updateSettings],
     ),
   )
+
+  useEffect(() => {
+    document.documentElement.style.zoom = String(displayZoom / 100)
+    return () => {
+      document.documentElement.style.zoom = ''
+    }
+  }, [displayZoom])
 
   useEffect(() => {
     const onInteract = () => {

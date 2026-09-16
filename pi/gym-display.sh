@@ -4,27 +4,63 @@ set -euo pipefail
 DISPLAY_URL="${VVK_DISPLAY_URL:-https://trainer.vastervikclimbing.se/display}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
+LOG="${HOME}/.vvk-gym-display.log"
+PROFILE="${HOME}/.config/vvk-gym-chromium"
+
+log() {
+  echo "$(date '+%F %T') $*" | tee -a "$LOG"
+}
+
+export DISPLAY="${DISPLAY:-:0}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+  for socket in "$XDG_RUNTIME_DIR"/wayland-*; do
+    if [[ -S "$socket" ]]; then
+      export WAYLAND_DISPLAY="$(basename "$socket")"
+      break
+    fi
+  done
+fi
+
+log "startar gymskärm (DISPLAY=${DISPLAY} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-})"
+sleep 4
 
 if ! command -v cec-client >/dev/null; then
-  echo "Tips: sudo apt install cec-utils  (HDMI på/av till TV:n)"
+  log "tips: sudo apt install cec-utils"
 fi
 
 if ! pgrep -f "gym-helper.py" >/dev/null; then
-  python3 "$HELPER" &
+  python3 "$HELPER" >>"$LOG" 2>&1 &
   sleep 0.4
+  log "gym-helper startad"
+else
+  log "gym-helper redan igång"
 fi
 
 CHROMIUM="$(command -v chromium-browser || command -v chromium || true)"
 if [[ -z "$CHROMIUM" ]]; then
-  echo "Chromium saknas. Installera Raspberry Pi OS med skrivbord." >&2
+  log "Chromium saknas. Installera Raspberry Pi OS med skrivbord."
   exit 1
 fi
 
+pkill -f "vvk-gym-chromium" >/dev/null 2>&1 || true
+sleep 0.3
+mkdir -p "$PROFILE"
+
+log "öppnar $DISPLAY_URL i helskärm med $CHROMIUM"
 exec "$CHROMIUM" \
-  --kiosk \
+  --user-data-dir="$PROFILE" \
+  --class=Gymskarm \
+  --start-fullscreen \
+  --start-maximized \
+  --no-first-run \
+  --no-default-browser-check \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
+  --hide-crash-restore-bubble \
+  --password-store=basic \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   --allow-running-insecure-content \
