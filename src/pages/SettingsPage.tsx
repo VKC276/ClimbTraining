@@ -91,8 +91,8 @@ export function SettingsPage() {
         <fieldset>
           <legend>Gymskärm (Pi)</legend>
           <p className="settings-note">
-            Styr volym och HDMI till TV:n på den kopplade skärmen. Pi:n måste köra
-            gym-scriptet.
+            Styr volym och skärm på/av via HDMI-CEC. Pi:n måste köra gym-scriptet.
+            På LG: slå på SIMPLINK (CEC).
           </p>
           <label className="field">
             <span>Volym {displayHardware.volume} %</span>
@@ -133,7 +133,7 @@ export function SettingsPage() {
             <span>
               <strong>Schema</strong>
               <span className="choice-hint">
-                TV:n slås på och av via HDMI vid tiderna nedan.
+                TV:n slås på och av via HDMI-CEC vid tiderna nedan.
               </span>
             </span>
           </label>

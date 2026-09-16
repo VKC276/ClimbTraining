@@ -58,9 +58,9 @@ X-GNOME-Autostart-enabled=true
 
 Byt `/home/pi` om Pi-användaren heter något annat.
 
-Byt sökvägen till där du lade filerna. Scriptet startar en lokal hjälpare (volym + HDMI) och öppnar gymsidan i kiosk.
+Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i kiosk. Volym och skärm på/av går bara över HDMI-CEC (ingen RS-232/nätverksstyrning).
 
-Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema. Det når Pi:n via synken — bara den fysiska displayen kan slå av HDMI.
+På testskärmen (t.ex. LG): slå på **SIMPLINK / HDMI-CEC**. Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema.
 
 ## Lokalt
 

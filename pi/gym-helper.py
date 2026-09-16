@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lokal hjälpare på Pi: HDMI (CEC) och volym. Lyssnar bara på 127.0.0.1."""
+"""Lokal hjälpare på Pi: HDMI-CEC (på/av + volym). Lyssnar bara på 127.0.0.1."""
 
 from __future__ import annotations
 
@@ -22,49 +22,93 @@ STATE = {
     "scheduleEnabled": False,
     "onTime": "07:00",
     "offTime": "22:00",
+    "cecVolume": None,
 }
 
-
-def run(command: list[str]) -> bool:
-    try:
-        subprocess.run(command, check=False, capture_output=True, timeout=8)
-        return True
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+CEC_LOCK = threading.Lock()
+CEC_PROC: subprocess.Popen[bytes] | None = None
 
 
-def set_volume(percent: int) -> None:
-    percent = max(0, min(100, int(percent)))
-    if shutil.which("pactl"):
-        run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{percent}%"])
-        return
-    if shutil.which("wpctl"):
-        run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{percent / 100:.2f}"])
-        return
-    if shutil.which("amixer"):
-        run(["amixer", "-q", "sset", "Master", f"{percent}%"])
+def log(message: str) -> None:
+    print(message, flush=True)
+
+
+def drain_cec(proc: subprocess.Popen[bytes]) -> None:
+    assert proc.stdout is not None
+    for raw in iter(proc.stdout.readline, b""):
+        line = raw.decode("utf-8", errors="replace").strip()
+        if not line:
+            continue
+        lower = line.lower()
+        if "error" in lower or "failed" in lower or "traffic" in lower:
+            log(f"cec: {line}")
+
+
+def start_cec() -> subprocess.Popen[bytes] | None:
+    global CEC_PROC
+    cec = shutil.which("cec-client")
+    if not cec:
+        log("cec-client saknas. sudo apt install cec-utils")
+        return None
+    proc = subprocess.Popen(
+        [cec, "-t", "p", "-o", "Gymskarm", "-d", "1"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=0,
+    )
+    threading.Thread(target=drain_cec, args=(proc,), daemon=True).start()
+    time.sleep(1.2)
+    CEC_PROC = proc
+    log("cec-client startad som playback (SIMPLINK/CEC)")
+    return proc
+
+
+def cec_send(lines: list[str]) -> bool:
+    global CEC_PROC
+    with CEC_LOCK:
+        proc = CEC_PROC
+        if proc is None or proc.poll() is not None:
+            proc = start_cec()
+        if proc is None or proc.stdin is None:
+            return False
+        try:
+            for line in lines:
+                proc.stdin.write(f"{line}\n".encode("ascii"))
+            proc.stdin.flush()
+            return True
+        except BrokenPipeError:
+            CEC_PROC = None
+            return False
 
 
 def set_hdmi(on: bool) -> None:
-    cec = shutil.which("cec-client")
-    if cec:
-        command = "on 0" if on else "standby 0"
-        try:
-            subprocess.run(
-                [cec, "-s", "-d", "1"],
-                input=f"{command}\n".encode(),
-                check=False,
-                capture_output=True,
-                timeout=8,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    vcgencmd = shutil.which("vcgencmd")
-    if vcgencmd:
-        run([vcgencmd, "display_power", "1" if on else "0"])
-    wlr = shutil.which("wlr-randr")
-    if wlr:
-        run([wlr, "--output", "HDMI-A-1", "--on" if on else "--off"])
+    if on:
+        ok = cec_send(["on 0", "as", "tx 40:04"])
+        log("CEC skärm på" if ok else "CEC skärm på misslyckades")
+        return
+    ok = cec_send(["standby 0"])
+    log("CEC skärm av" if ok else "CEC skärm av misslyckades")
+
+
+def set_volume(percent: int, previous: int | None) -> None:
+    percent = max(0, min(100, int(percent)))
+    if previous is None:
+        STATE["cecVolume"] = percent
+        log(f"CEC volym {percent} % (ingen stegning första gången)")
+        return
+    delta = percent - int(previous)
+    if delta == 0:
+        return
+    command = "volup" if delta > 0 else "voldown"
+    remote = "tx 40:44:41" if delta > 0 else "tx 40:44:42"
+    steps = min(abs(delta), 40)
+    lines: list[str] = []
+    for _ in range(steps):
+        lines.extend([command, remote, "tx 40:45"])
+    ok = cec_send(lines)
+    STATE["cecVolume"] = percent
+    log(f"CEC volym {previous} → {percent} ({steps} steg)" if ok else "CEC volym misslyckades")
 
 
 def save_state() -> None:
@@ -80,13 +124,16 @@ def load_state() -> None:
         return
     with LOCK:
         STATE.update(loaded)
-    apply(STATE)
+        if STATE.get("cecVolume") is None:
+            STATE["cecVolume"] = STATE.get("volume")
 
 
-def apply(state: dict) -> None:
-    if "volume" in state:
-        set_volume(state["volume"])
-    if "hdmiOn" in state:
+def apply(state: dict, *, volume_changed: bool, power_changed: bool) -> None:
+    if volume_changed:
+        previous = state.get("cecVolume")
+        previous_int = int(previous) if isinstance(previous, (int, float)) else None
+        set_volume(int(state.get("volume", 80)), previous_int)
+    if power_changed:
         set_hdmi(bool(state["hdmiOn"]))
 
 
@@ -132,12 +179,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         with LOCK:
+            volume_changed = "volume" in payload and payload["volume"] != STATE.get("volume")
+            power_changed = "hdmiOn" in payload and payload["hdmiOn"] != STATE.get("hdmiOn")
             for key in ("volume", "hdmiOn", "scheduleEnabled", "onTime", "offTime"):
                 if key in payload:
                     STATE[key] = payload[key]
             snapshot = dict(STATE)
             save_state()
-        apply(snapshot)
+        apply(snapshot, volume_changed=volume_changed, power_changed=power_changed)
         self.send_response(200)
         self._cors()
         self.send_header("Content-Type", "application/json")
@@ -186,9 +235,10 @@ def scheduler() -> None:
 
 def main() -> None:
     load_state()
+    start_cec()
     threading.Thread(target=scheduler, daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"vvk gym helper on http://{HOST}:{PORT}", flush=True)
+    log(f"vvk gym helper on http://{HOST}:{PORT} (CEC)")
     server.serve_forever()
 
 

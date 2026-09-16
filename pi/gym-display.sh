@@ -28,4 +28,5 @@ exec "$CHROMIUM" \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   --allow-running-insecure-content \
+  --disable-features=BlockInsecurePrivateNetworkRequests,PushMessaging \
   "$DISPLAY_URL"
