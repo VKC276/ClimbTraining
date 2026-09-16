@@ -1,0 +1,60 @@
+import { useEffect, useRef } from 'react'
+import {
+  PI_HELPER_URL,
+  screenScheduledOn,
+  type DisplayHardware,
+} from '../gym/displayHardware'
+
+function clockKey(now: Date) {
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+
+async function pushToPi(hardware: DisplayHardware) {
+  const response = await fetch(`${PI_HELPER_URL}/command`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(hardware),
+  })
+  if (!response.ok) throw new Error('Pi-hjälparen svarade inte')
+}
+
+export function usePiDisplayControl(
+  hardware: DisplayHardware,
+  updateHdmiOn: (hdmiOn: boolean) => void,
+) {
+  const lastSent = useRef('')
+  const lastScheduleMinute = useRef('')
+
+  useEffect(() => {
+    const payload = JSON.stringify(hardware)
+    if (payload === lastSent.current) return
+    lastSent.current = payload
+    void pushToPi(hardware).catch(() => {
+      lastSent.current = ''
+    })
+  }, [hardware])
+
+  useEffect(() => {
+    if (!hardware.scheduleEnabled) return
+
+    const tick = () => {
+      const now = new Date()
+      const minute = clockKey(now)
+      if (minute === lastScheduleMinute.current) return
+      if (minute !== hardware.onTime && minute !== hardware.offTime) return
+      lastScheduleMinute.current = minute
+      const shouldOn = screenScheduledOn(now, hardware.onTime, hardware.offTime)
+      if (shouldOn !== hardware.hdmiOn) updateHdmiOn(shouldOn)
+    }
+
+    tick()
+    const id = window.setInterval(tick, 5000)
+    return () => window.clearInterval(id)
+  }, [
+    hardware.scheduleEnabled,
+    hardware.onTime,
+    hardware.offTime,
+    hardware.hdmiOn,
+    updateHdmiOn,
+  ])
+}

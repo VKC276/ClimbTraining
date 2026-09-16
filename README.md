@@ -24,11 +24,43 @@ Workflown i `.github/workflows/pages.yml` bygger från `main` och publicerar via
 
 ## Raspberry Pi
 
+Klona repot (ingen Node-installation behövs — scriptet öppnar den publicerade gymsidan):
+
 ```bash
-chromium-browser --kiosk --autoplay-policy=no-user-gesture-required --app=https://trainer.vastervikclimbing.se/display
+sudo apt update
+sudo apt install -y git cec-utils
+git clone https://github.com/VKC276/ClimbTraining.git ~/ClimbTraining
+chmod +x ~/ClimbTraining/pi/gym-display.sh ~/ClimbTraining/pi/gym-helper.py
+~/ClimbTraining/pi/gym-display.sh
 ```
 
-Gymskärmen visar ett **skärm-id** (fyra tecken) nere till höger i vila. Ange samma kod i kontrollpanelen på mobilen. Koden delas ut per fysisk enhet — att öppna `/display` på en annan dator ger ett annat id, inte hallens.
+När koden uppdaterats på GitHub:
+
+```bash
+cd ~/ClimbTraining
+git pull
+```
+
+Autostart:
+
+```bash
+mkdir -p ~/.config/autostart
+nano ~/.config/autostart/gym-display.desktop
+```
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Gymskärm
+Exec=/home/pi/ClimbTraining/pi/gym-display.sh
+X-GNOME-Autostart-enabled=true
+```
+
+Byt `/home/pi` om Pi-användaren heter något annat.
+
+Byt sökvägen till där du lade filerna. Scriptet startar en lokal hjälpare (volym + HDMI) och öppnar gymsidan i kiosk.
+
+Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema. Det når Pi:n via synken — bara den fysiska displayen kan slå av HDMI.
 
 ## Lokalt
 

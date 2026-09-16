@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { ActivityStage } from '../components/ActivityStage'
 import { IdleScreen } from '../components/IdleScreen'
 import { getActivity } from '../activities'
@@ -6,15 +6,28 @@ import { unlockDensityAudio } from '../activities/densityCircuit/signals'
 import { useGym } from '../gym/GymContext'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useNow } from '../hooks/useNow'
+import { usePiDisplayControl } from '../hooks/usePiDisplayControl'
 import { useWakeLock } from '../hooks/useWakeLock'
 
 export function DisplayPage() {
   const now = useNow()
-  const { snapshot, bumpInteraction, syncStatus, screenId } = useGym()
+  const { snapshot, bumpInteraction, syncStatus, screenId, updateSettings } = useGym()
   const activity = getActivity(snapshot.activityId)
+  const hardware = snapshot.settings.displayHardware
 
   useIdleTimeout()
   useWakeLock(true)
+  usePiDisplayControl(
+    hardware,
+    useCallback(
+      (hdmiOn) => {
+        updateSettings({
+          displayHardware: { ...hardware, hdmiOn },
+        })
+      },
+      [hardware, updateSettings],
+    ),
+  )
 
   useEffect(() => {
     const onInteract = () => {

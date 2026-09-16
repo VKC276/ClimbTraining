@@ -23,6 +23,7 @@ import {
 import { defaultTimerConfig, idleTimerSession } from '../activities/timer/model'
 import type { GymSettings, GymSnapshot } from '../types'
 import { defaultFontId } from '../fonts'
+import { defaultDisplayHardware } from './displayHardware'
 
 export const SETTINGS_STORAGE_KEY = 'vvk-gym-settings-v1'
 export const SNAPSHOT_STORAGE_KEY = 'vvk-gym-snapshot-v1'
@@ -33,6 +34,7 @@ export const defaultSettings: GymSettings = {
   idleTimeoutMinutes: 5,
   syncRoom: DEFAULT_SYNC_ROOM,
   fontId: defaultFontId,
+  displayHardware: { ...defaultDisplayHardware },
   catchHold: defaultCatchHoldConfig,
   densityCircuit: defaultDensityCircuitConfig,
   stationTraining: defaultStationTrainingConfig,
@@ -49,6 +51,7 @@ export function defaultSnapshot(now = Date.now()): GymSnapshot {
     lastInteractionAt: now,
     settings: {
       ...defaultSettings,
+      displayHardware: { ...defaultDisplayHardware },
       catchHold: { ...defaultCatchHoldConfig },
       densityCircuit: { ...defaultDensityCircuitConfig },
       stationTraining: { ...defaultStationTrainingConfig },

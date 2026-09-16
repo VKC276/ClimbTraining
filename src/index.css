@@ -1478,6 +1478,23 @@ select,
   font: inherit;
 }
 
+.field input[type='range'] {
+  min-height: 32px;
+  padding: 0;
+}
+
+.hdmi-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 @media (max-width: 720px) {
   .activity-top {
     flex-direction: column;
@@ -1535,6 +1552,10 @@ select,
 
   .choose-story-actions {
     display: grid;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
   }
 
   .timer-preset {

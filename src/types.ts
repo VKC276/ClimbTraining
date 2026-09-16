@@ -1,4 +1,5 @@
 import type { FontId } from './fonts'
+import type { DisplayHardware } from './gym/displayHardware'
 import type { CatchHoldConfig, CatchHoldSession } from './activities/catchHold/model'
 import type {
   DensityCircuitConfig,
@@ -30,6 +31,7 @@ export type GymSettings = {
   idleTimeoutMinutes: number
   syncRoom: string
   fontId: FontId
+  displayHardware: DisplayHardware
   catchHold: CatchHoldConfig
   densityCircuit: DensityCircuitConfig
   stationTraining: StationTrainingConfig

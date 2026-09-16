@@ -16,6 +16,7 @@ import { normalizeTimerConfig } from '../activities/timer/model'
 import { idleTimerSession } from '../activities/timer/model'
 import type { GymSettings, GymSnapshot } from '../types'
 import { isFontId } from '../fonts'
+import { normalizeDisplayHardware } from './displayHardware'
 import {
   SNAPSHOT_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
@@ -45,6 +46,7 @@ export function normalizeSettings(partial?: Partial<GymSettings>): GymSettings {
         ? partial.syncRoom.trim()
         : defaultSettings.syncRoom,
     fontId: isFontId(partial?.fontId) ? partial.fontId : defaultSettings.fontId,
+    displayHardware: normalizeDisplayHardware(partial?.displayHardware),
     catchHold: normalizeCatchHoldConfig(partial?.catchHold),
     densityCircuit: normalizeDensityCircuitConfig(partial?.densityCircuit),
     stationTraining: normalizeStationTrainingConfig(partial?.stationTraining),

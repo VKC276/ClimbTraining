@@ -7,7 +7,13 @@ import type { ClockStyle } from '../types'
 
 export function SettingsPage() {
   const { snapshot, updateSettings, screenId, unpairScreen } = useGym()
-  const { clockStyle, idleTimeoutMinutes, fontId } = snapshot.settings
+  const { clockStyle, idleTimeoutMinutes, fontId, displayHardware } = snapshot.settings
+
+  const patchHardware = (partial: Partial<typeof displayHardware>) => {
+    updateSettings({
+      displayHardware: { ...displayHardware, ...partial },
+    })
+  }
 
   return (
     <main className="trainer-page settings-page">
@@ -81,6 +87,75 @@ export function SettingsPage() {
             ))}
           </select>
         </label>
+
+        <fieldset>
+          <legend>Gymskärm (Pi)</legend>
+          <p className="settings-note">
+            Styr volym och HDMI till TV:n på den kopplade skärmen. Pi:n måste köra
+            gym-scriptet.
+          </p>
+          <label className="field">
+            <span>Volym {displayHardware.volume} %</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={displayHardware.volume}
+              onChange={(event) =>
+                patchHardware({ volume: Number(event.target.value) })
+              }
+            />
+          </label>
+          <div className="hdmi-toggle">
+            <button
+              className={displayHardware.hdmiOn ? 'button' : 'button-ghost'}
+              type="button"
+              onClick={() => patchHardware({ hdmiOn: true })}
+            >
+              Skärm på
+            </button>
+            <button
+              className={!displayHardware.hdmiOn ? 'button' : 'button-ghost'}
+              type="button"
+              onClick={() => patchHardware({ hdmiOn: false })}
+            >
+              Skärm av
+            </button>
+          </div>
+          <label className={displayHardware.scheduleEnabled ? 'choice selected' : 'choice'}>
+            <input
+              type="checkbox"
+              checked={displayHardware.scheduleEnabled}
+              onChange={(event) =>
+                patchHardware({ scheduleEnabled: event.target.checked })
+              }
+            />
+            <span>
+              <strong>Schema</strong>
+              <span className="choice-hint">
+                TV:n slås på och av via HDMI vid tiderna nedan.
+              </span>
+            </span>
+          </label>
+          <div className="field-row">
+            <label className="field">
+              <span>På klockan</span>
+              <input
+                type="time"
+                value={displayHardware.onTime}
+                onChange={(event) => patchHardware({ onTime: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>Av klockan</span>
+              <input
+                type="time"
+                value={displayHardware.offTime}
+                onChange={(event) => patchHardware({ offTime: event.target.value })}
+              />
+            </label>
+          </div>
+        </fieldset>
 
         <p className="settings-note">
           Kopplad till skärm {screenId}. Koden syns nere till höger på
