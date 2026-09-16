@@ -79,6 +79,7 @@ log "öppnar $DISPLAY_URL"
   --user-data-dir="$PROFILE" \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port="$CDP_PORT" \
+  --start-maximized \
   --start-fullscreen \
   --no-first-run \
   --no-default-browser-check \
@@ -92,12 +93,8 @@ log "öppnar $DISPLAY_URL"
   >/dev/null 2>&1 &
 CHROME_PID=$!
 
-python3 "$FULLSCREEN" >/dev/null 2>&1 || true
-
-if command -v wtype >/dev/null; then
-  wtype -k F11 >/dev/null 2>&1 || true
-elif command -v xdotool >/dev/null; then
-  xdotool search --onlyvisible --class chromium windowactivate --sync key F11 >/dev/null 2>&1 || true
-fi
+sleep 2
+python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
+(sleep 6; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
 
 wait "$CHROME_PID"
