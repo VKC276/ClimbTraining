@@ -84,7 +84,6 @@ log "öppnar $DISPLAY_URL"
   --no-default-browser-check \
   --password-store=basic \
   --autoplay-policy=no-user-gesture-required \
-  --enable-speech-dispatcher \
   --disable-background-networking \
   --disable-sync \
   --disable-component-update \

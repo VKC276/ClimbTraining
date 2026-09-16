@@ -1,4 +1,5 @@
 import { playCueTone, unlockDensityAudio } from '../densityCircuit/signals'
+import { PI_HELPER_URL } from '../../gym/displayHardware'
 import type { CatchHoldColor } from './model'
 
 const colorTones: Record<string, number> = {
@@ -14,51 +15,21 @@ const colorTones: Record<string, number> = {
   white: 784,
 }
 
-export function unlockSpeech() {
-  if (!('speechSynthesis' in window)) return
-  const synth = window.speechSynthesis
-  synth.getVoices()
-  synth.resume()
-  if (synth.speaking || synth.pending) return
-  const warm = new SpeechSynthesisUtterance(' ')
-  warm.volume = 0
-  warm.rate = 2
-  warm.lang = 'sv-SE'
-  try {
-    synth.speak(warm)
-  } catch {
-    // Chromium can reject speech until a gesture
-  }
-}
-
-function speakColorName(name: string) {
-  if (!('speechSynthesis' in window)) return
-
-  const synth = window.speechSynthesis
-  const speak = () => {
-    const utter = new SpeechSynthesisUtterance(`${name}!`)
-    utter.lang = 'sv-SE'
-    utter.rate = 1.05
-    utter.pitch = 1.05
-    utter.volume = 1
-    const voice =
-      synth.getVoices().find((item) => item.lang.toLowerCase().startsWith('sv')) ??
-      synth.getVoices().find((item) => item.lang.toLowerCase().startsWith('en'))
-    if (voice) utter.voice = voice
-    synth.resume()
-    synth.speak(utter)
-  }
-
-  synth.cancel()
-  window.setTimeout(speak, 80)
-  if (synth.getVoices().length === 0) {
-    synth.addEventListener('voiceschanged', speak, { once: true })
-  }
+async function speakOnPi(name: string) {
+  const response = await fetch(`${PI_HELPER_URL}/command`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ speak: name }),
+  })
+  if (!response.ok) throw new Error('Pi-hjälparen svarade inte')
 }
 
 export async function announceCatchHoldColor(color: CatchHoldColor) {
   await unlockDensityAudio()
-  unlockSpeech()
   await playCueTone(colorTones[color.id] ?? 523)
-  speakColorName(color.name)
+  try {
+    await speakOnPi(color.name)
+  } catch {
+    // helper and espeak-ng exist only on the gym Pi
+  }
 }

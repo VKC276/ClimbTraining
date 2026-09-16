@@ -17,6 +17,7 @@ PORT = 8743
 STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
+SPEAK_LOCK = threading.Lock()
 TV_ADDRESS = "0"
 STATE = {
     "volume": 80,
@@ -65,6 +66,29 @@ def send_cec_command(cec_command: str, timeout: int = 8) -> str:
         return ""
     log(f"CEC `{cec_command}`")
     return (process.stdout or "") + (process.stderr or "")
+
+
+def speak_text(text: str) -> None:
+    cleaned = "".join(ch for ch in str(text) if ch.isalnum() or ch in " !-åäöÅÄÖ")
+    cleaned = cleaned.strip()[:40]
+    if not cleaned:
+        return
+    binary = shutil.which("espeak-ng") or shutil.which("espeak")
+    if not binary:
+        log("espeak-ng saknas")
+        return
+    try:
+        with SPEAK_LOCK:
+            subprocess.run(
+                [binary, "-v", "sv", "-s", "145", "-a", "160", cleaned],
+                check=False,
+                capture_output=True,
+                timeout=8,
+            )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        log(f"espeak: {error}")
+        return
+    log(f"tal `{cleaned}`")
 
 
 def send_power(on: bool) -> None:
@@ -215,6 +239,9 @@ class Handler(BaseHTTPRequestHandler):
                 current = dict(STATE)
             save_state()
         log(f"kommando {payload}")
+        speak = payload.get("speak")
+        if isinstance(speak, str) and speak.strip():
+            threading.Thread(target=speak_text, args=(speak,), daemon=True).start()
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
         self.send_response(200)
         self._cors()

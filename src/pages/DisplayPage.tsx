@@ -2,7 +2,6 @@ import { useCallback, useEffect } from 'react'
 import { ActivityStage } from '../components/ActivityStage'
 import { IdleScreen } from '../components/IdleScreen'
 import { getActivity } from '../activities'
-import { unlockSpeech } from '../activities/catchHold/speech'
 import { unlockDensityAudio } from '../activities/densityCircuit/signals'
 import { useGym } from '../gym/GymContext'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
@@ -21,10 +20,8 @@ export function DisplayPage() {
   useWakeLock(true)
   useEffect(() => {
     void unlockDensityAudio()
-    unlockSpeech()
     const id = window.setInterval(() => {
       void unlockDensityAudio()
-      unlockSpeech()
     }, 20_000)
     return () => window.clearInterval(id)
   }, [])
@@ -44,7 +41,6 @@ export function DisplayPage() {
     const onInteract = () => {
       bumpInteraction()
       void unlockDensityAudio()
-      unlockSpeech()
     }
     window.addEventListener('pointerdown', onInteract)
     window.addEventListener('keydown', onInteract)
