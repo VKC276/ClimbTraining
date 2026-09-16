@@ -34,30 +34,6 @@ if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
 fi
 
 log "startar gymskärm"
-CURSOR_FIX="$(python3 - <<'PY'
-from pathlib import Path
-import re
-path = Path.home() / ".config/labwc/rc.xml"
-if not path.exists():
-    raise SystemExit(0)
-text = path.read_text(encoding="utf-8")
-new = re.sub(
-    r'(<keybind key="A-W-h">\s*<action name="HideCursor"\s*/>)\s*'
-    r'<action name="WarpCursor"[^/]*/>',
-    r"\1",
-    text,
-)
-if new == text:
-    raise SystemExit(0)
-path.write_text(new, encoding="utf-8")
-print("changed")
-PY
-)"
-if [[ "$CURSOR_FIX" == *changed* ]]; then
-  log "tog bort WarpCursor från labwc"
-  killall -q -HUP labwc >/dev/null 2>&1 || true
-  sleep 1
-fi
 sleep 4
 
 if command -v pactl >/dev/null; then
@@ -120,11 +96,5 @@ CHROME_PID=$!
 sleep 2
 python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
 (sleep 6; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
-
-hide_pointer() {
-  "$SCRIPT_DIR/hide-cursor.sh" >>"$LOG" 2>&1 || true
-}
-hide_pointer
-(sleep 8; "$SCRIPT_DIR/hide-cursor.sh" >>"$LOG" 2>&1) &
 
 wait "$CHROME_PID"

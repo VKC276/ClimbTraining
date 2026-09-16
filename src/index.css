@@ -119,10 +119,14 @@ a {
   min-height: 100svh;
   padding: 2rem;
   user-select: none;
+  cursor: none;
 }
 
 html.display-no-cursor,
-html.display-no-cursor * {
+html.display-no-cursor body,
+html.display-no-cursor *,
+.display-page,
+.display-page * {
   cursor: none !important;
 }
 
