@@ -25,6 +25,7 @@ export function usePiDisplayControl(
   const lastSent = useRef('')
   const lastHdmi = useRef(hardware.hdmiOn)
   const lastCommandId = useRef(hardware.hdmiCommandId)
+  const lastVolumeId = useRef(hardware.volumeCommandId)
   const lastScheduleMinute = useRef('')
   const hdmiOnRef = useRef(hardware.hdmiOn)
   const updateHdmiOnRef = useRef(updateHdmiOn)
@@ -36,9 +37,11 @@ export function usePiDisplayControl(
     if (payload === lastSent.current) return
     const powerChanged =
       hardware.hdmiOn !== lastHdmi.current ||
-      hardware.hdmiCommandId !== lastCommandId.current
+      hardware.hdmiCommandId !== lastCommandId.current ||
+      hardware.volumeCommandId !== lastVolumeId.current
     lastHdmi.current = hardware.hdmiOn
     lastCommandId.current = hardware.hdmiCommandId
+    lastVolumeId.current = hardware.volumeCommandId
     const timer = window.setTimeout(
       () => {
         lastSent.current = payload

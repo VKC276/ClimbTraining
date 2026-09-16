@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -20,7 +20,6 @@ export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
   const { snapshot, updateCatchHold, setCatchHoldSession } = useGym()
   const config = snapshot.settings.catchHold
   const session = snapshot.catchHoldSession
-  const stageRef = useRef<HTMLDivElement>(null)
   const running = session.phase === 'countdown' || session.phase === 'color'
   const color = getCatchHoldColor(session.colorId)
   const remaining = Math.max(0, Math.ceil((session.phaseEndsAt - now.getTime()) / 1000))
@@ -72,25 +71,6 @@ export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
   ])
 
   useEffect(() => {
-    const root = stageRef.current?.closest('.activity-stage')
-    if (!(root instanceof HTMLElement)) return
-    if (session.phase === 'color' && color) {
-      root.style.background = color.hex
-      root.style.color = light ? '#111111' : '#ffffff'
-      root.classList.toggle('catch-hold-light', light)
-    } else {
-      root.style.background = ''
-      root.style.color = ''
-      root.classList.remove('catch-hold-light')
-    }
-    return () => {
-      root.style.background = ''
-      root.style.color = ''
-      root.classList.remove('catch-hold-light')
-    }
-  }, [session.phase, color, light])
-
-  useEffect(() => {
     if (variant !== 'display') return
     if (!config.soundOn || session.phase !== 'color' || !color) return
     void announceCatchHoldColor(color)
@@ -116,7 +96,7 @@ export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
   }
 
   return (
-    <div className={`catch-hold catch-hold-${variant}`} ref={stageRef}>
+    <div className={`catch-hold catch-hold-${variant}`}>
       {variant === 'trainer' && !running ? (
         <form className="catch-hold-settings" onSubmit={(event) => event.preventDefault()}>
           <fieldset>

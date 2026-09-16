@@ -4,7 +4,7 @@ import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
-import type { HdmiCommand } from '../gym/displayHardware'
+import type { HdmiCommand, VolumeCommand } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
 function SizeField({
@@ -46,10 +46,24 @@ export function SettingsPage() {
   } = snapshot.settings
 
   const [hdmiPressed, setHdmiPressed] = useState<HdmiCommand | null>(null)
+  const [volumePressed, setVolumePressed] = useState<VolumeCommand | null>(null)
 
   const patchHardware = (partial: Partial<typeof displayHardware>) => {
     updateSettings({
       displayHardware: { ...displayHardware, ...partial },
+    })
+  }
+
+  const pulseVolume = (volumeCommand: VolumeCommand) => {
+    setVolumePressed(volumeCommand)
+    window.setTimeout(() => setVolumePressed(null), 180)
+    patchHardware({
+      volume: Math.min(
+        100,
+        Math.max(0, displayHardware.volume + (volumeCommand === 'up' ? 10 : -10)),
+      ),
+      volumeCommand,
+      volumeCommandId: Date.now(),
     })
   }
 
@@ -157,18 +171,22 @@ export function SettingsPage() {
 
         <fieldset>
           <legend>Gymskärm</legend>
-          <label className="field">
-            <span>Volym {displayHardware.volume} %</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={displayHardware.volume}
-              onChange={(event) =>
-                patchHardware({ volume: Number(event.target.value) })
-              }
-            />
-          </label>
+          <div className="hdmi-toggle">
+            <button
+              className={volumePressed === 'down' ? 'button' : 'button-ghost'}
+              type="button"
+              onClick={() => pulseVolume('down')}
+            >
+              Volym ner
+            </button>
+            <button
+              className={volumePressed === 'up' ? 'button' : 'button-ghost'}
+              type="button"
+              onClick={() => pulseVolume('up')}
+            >
+              Volym upp
+            </button>
+          </div>
           <div className="hdmi-toggle">
             <button
               className={hdmiPressed === 'on' ? 'button' : 'button-ghost'}

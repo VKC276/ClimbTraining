@@ -13,20 +13,21 @@ export type CatchHoldColorId =
 export type CatchHoldColor = {
   id: CatchHoldColorId
   name: string
+  spokenName: string
   hex: string
 }
 
 export const catchHoldColors: CatchHoldColor[] = [
-  { id: 'red', name: 'Röd', hex: '#e53935' },
-  { id: 'blue', name: 'Blå', hex: '#1e88e5' },
-  { id: 'yellow', name: 'Gul', hex: '#fdd835' },
-  { id: 'green', name: 'Grön', hex: '#43a047' },
-  { id: 'orange', name: 'Orange', hex: '#fb8c00' },
-  { id: 'purple', name: 'Lila', hex: '#8e24aa' },
-  { id: 'pink', name: 'Rosa', hex: '#ec407a' },
-  { id: 'turquoise', name: 'Turkos', hex: '#00acc1' },
-  { id: 'black', name: 'Svart', hex: '#212121' },
-  { id: 'white', name: 'Vit', hex: '#f5f5f5' },
+  { id: 'red', name: 'Röd', spokenName: 'röd', hex: '#e53935' },
+  { id: 'blue', name: 'Blå', spokenName: 'blå', hex: '#1e88e5' },
+  { id: 'yellow', name: 'Gul', spokenName: 'gul', hex: '#fdd835' },
+  { id: 'green', name: 'Grön', spokenName: 'grön', hex: '#43a047' },
+  { id: 'orange', name: 'Orange', spokenName: 'oransch', hex: '#fb8c00' },
+  { id: 'purple', name: 'Lila', spokenName: 'lila', hex: '#8e24aa' },
+  { id: 'pink', name: 'Rosa', spokenName: 'råsa', hex: '#ec407a' },
+  { id: 'turquoise', name: 'Turkos', spokenName: 'turkås', hex: '#00acc1' },
+  { id: 'black', name: 'Svart', spokenName: 'svart', hex: '#212121' },
+  { id: 'white', name: 'Vit', spokenName: 'vit', hex: '#f5f5f5' },
 ]
 
 export type CatchHoldConfig = {

@@ -21,6 +21,8 @@ SPEAK_LOCK = threading.Lock()
 TV_ADDRESS = "0"
 STATE = {
     "volume": 80,
+    "volumeCommand": None,
+    "volumeCommandId": 0,
     "hdmiOn": True,
     "hdmiCommand": None,
     "hdmiCommandId": 0,
@@ -80,7 +82,7 @@ def speak_text(text: str) -> None:
     try:
         with SPEAK_LOCK:
             subprocess.run(
-                [binary, "-v", "sv", "-s", "145", "-a", "160", cleaned],
+                [binary, "-v", "sv", "-s", "125", "-a", "180", "-g", "8", cleaned],
                 check=False,
                 capture_output=True,
                 timeout=8,
@@ -167,7 +169,12 @@ def apply_change(previous: dict, current: dict) -> None:
         send_power(command == "on")
     elif bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
         send_power(bool(current.get("hdmiOn")))
-    if int(previous.get("volume", 0)) != int(current.get("volume", 0)):
+    volume_id = int(current.get("volumeCommandId") or 0)
+    previous_volume_id = int(previous.get("volumeCommandId") or 0)
+    volume_command = current.get("volumeCommand")
+    if volume_id != previous_volume_id and volume_command in ("up", "down"):
+        send_volume_step(volume_command == "up")
+    elif int(previous.get("volume", 0)) != int(current.get("volume", 0)):
         apply_volume(int(current["volume"]), int(previous["volume"]))
 
 
@@ -216,6 +223,8 @@ class Handler(BaseHTTPRequestHandler):
             previous = dict(STATE)
             for key in (
                 "volume",
+                "volumeCommand",
+                "volumeCommandId",
                 "hdmiOn",
                 "hdmiCommand",
                 "hdmiCommandId",

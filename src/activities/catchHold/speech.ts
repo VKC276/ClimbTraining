@@ -28,7 +28,7 @@ export async function announceCatchHoldColor(color: CatchHoldColor) {
   await unlockDensityAudio()
   await playCueTone(colorTones[color.id] ?? 523)
   try {
-    await speakOnPi(color.name)
+    await speakOnPi(color.spokenName)
   } catch {
     // helper and espeak-ng exist only on the gym Pi
   }

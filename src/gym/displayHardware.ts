@@ -1,7 +1,10 @@
 export type HdmiCommand = 'on' | 'off'
+export type VolumeCommand = 'up' | 'down'
 
 export type DisplayHardware = {
   volume: number
+  volumeCommand: VolumeCommand | null
+  volumeCommandId: number
   hdmiOn: boolean
   hdmiCommand: HdmiCommand | null
   hdmiCommandId: number
@@ -12,6 +15,8 @@ export type DisplayHardware = {
 
 export const defaultDisplayHardware: DisplayHardware = {
   volume: 80,
+  volumeCommand: null,
+  volumeCommandId: 0,
   hdmiOn: true,
   hdmiCommand: null,
   hdmiCommandId: 0,
@@ -40,6 +45,11 @@ export function normalizeDisplayHardware(
 ): DisplayHardware {
   return {
     volume: clamp(Math.round(Number(partial?.volume ?? defaultDisplayHardware.volume)), 0, 100),
+    volumeCommand:
+      partial?.volumeCommand === 'up' || partial?.volumeCommand === 'down'
+        ? partial.volumeCommand
+        : null,
+    volumeCommandId: Math.max(0, Math.round(Number(partial?.volumeCommandId ?? 0) || 0)),
     hdmiOn: partial?.hdmiOn !== false,
     hdmiCommand:
       partial?.hdmiCommand === 'on' || partial?.hdmiCommand === 'off'
