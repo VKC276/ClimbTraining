@@ -98,14 +98,9 @@ python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
 (sleep 6; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
 
 hide_pointer() {
-  if ! command -v wtype >/dev/null; then
-    return
-  fi
-  wtype -M alt -M logo -P h -m logo -m alt >/dev/null 2>&1 || \
-    wtype -M alt -M logo h -m logo -m alt >/dev/null 2>&1 || true
+  "$SCRIPT_DIR/hide-cursor.sh" >>"$LOG" 2>&1 || true
 }
 hide_pointer
-(sleep 8; hide_pointer) &
-(sleep 14; hide_pointer) &
+(sleep 8; "$SCRIPT_DIR/hide-cursor.sh" >>"$LOG" 2>&1) &
 
 wait "$CHROME_PID"

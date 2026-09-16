@@ -3,9 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DISPLAY_SH="$SCRIPT_DIR/gym-display.sh"
-LINE="$DISPLAY_SH &"
 
-chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/chromium-fullscreen.py"
+chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/chromium-fullscreen.py" "$SCRIPT_DIR/hide-cursor.sh"
 
 rm -f "$HOME/.config/autostart/gym-display.desktop"
 
@@ -25,18 +24,22 @@ if [[ ! -f "$HOME/.config/labwc/autostart" && -f /etc/xdg/labwc/autostart ]]; th
   cp /etc/xdg/labwc/autostart "$HOME/.config/labwc/autostart"
 fi
 touch "$HOME/.config/labwc/autostart"
-python3 - "$HOME/.config/labwc/autostart" "$LINE" <<'PY'
+python3 - "$HOME/.config/labwc/autostart" "$DISPLAY_SH" "$SCRIPT_DIR/hide-cursor.sh" <<'PY'
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
-line = sys.argv[2]
+display = sys.argv[2] + " &"
+hide = sys.argv[3] + " &"
 text = path.read_text(encoding="utf-8")
 kept = [
     row
     for row in text.splitlines()
-    if "gym-display.sh" not in row and row.strip() != "# VVK gymskärm"
+    if "gym-display.sh" not in row
+    and "hide-cursor.sh" not in row
+    and row.strip() != "# VVK gymskärm"
 ]
 kept.append("# VVK gymskärm")
-kept.append(line)
+kept.append(hide)
+kept.append(display)
 path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
 PY
 
