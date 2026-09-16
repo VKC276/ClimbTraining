@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lokal hjälpare: HDMI-CEC för skärm och volym. Bara 127.0.0.1."""
+"""HDMI-CEC via cec-client, samma anrop som det fungerande styrscriptet."""
 
 from __future__ import annotations
 
@@ -17,9 +17,12 @@ PORT = 8743
 STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
+TV_ADDRESS = "0"
 STATE = {
     "volume": 80,
     "hdmiOn": True,
+    "hdmiCommand": None,
+    "hdmiCommandId": 0,
     "scheduleEnabled": False,
     "onTime": "07:00",
     "offTime": "22:00",
@@ -30,51 +33,57 @@ def log(message: str) -> None:
     print(message, flush=True)
 
 
-def run(command: list[str], stdin: bytes | None = None) -> tuple[int, str]:
+def run(command: list[str]) -> tuple[int, str]:
     try:
         result = subprocess.run(
             command,
-            input=stdin,
             check=False,
             capture_output=True,
-            timeout=12,
+            timeout=8,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
-        log(f"{command[0]}: {error}")
         return 1, str(error)
     text = (result.stdout + result.stderr).decode("utf-8", errors="replace")
     return result.returncode, text
 
 
-def cec_line(line: str) -> bool:
-    """En CEC-rad via libCEC. Det är den pålitliga vägen på Pi."""
-    cec = shutil.which("cec-client")
-    if not cec:
+def send_cec_command(cec_command: str, timeout: int = 8) -> str:
+    try:
+        with CEC_LOCK:
+            process = subprocess.run(
+                ["cec-client", "-s", "-d", "1"],
+                input=cec_command + "\n",
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+    except FileNotFoundError:
         log("cec-client saknas")
-        return False
-    with CEC_LOCK:
-        code, text = run(
-            [cec, "-s", "-t", "p", "-o", "Gym", "-d", "1"],
-            stdin=f"{line}\n".encode("ascii"),
-        )
-    snippet = " ".join(text.split())[-400:]
-    log(f"CEC `{line}` exit={code} {snippet}")
-    return "TRAFFIC" in text.upper() or code == 0
+        return ""
+    except subprocess.TimeoutExpired:
+        log(f"CEC timeout `{cec_command}`")
+        return ""
+    log(f"CEC `{cec_command}`")
+    return (process.stdout or "") + (process.stderr or "")
 
 
 def send_power(on: bool) -> None:
-    cec_line("on 0" if on else "standby 0")
+    if on:
+        send_cec_command(f"on {TV_ADDRESS}")
+        send_cec_command("as")
+        return
+    send_cec_command(f"standby {TV_ADDRESS}")
 
 
-def send_volume_step(up: bool) -> bool:
-    return cec_line("volup" if up else "voldown")
+def send_volume_step(up: bool) -> None:
+    send_cec_command("volup" if up else "voldown")
 
 
 def apply_volume(target: int, previous: int) -> None:
     target = max(0, min(100, int(target)))
     previous = int(previous)
     if target == 0:
-        cec_line("mute")
+        send_cec_command("mute")
         return
     delta = target - previous
     if delta == 0:
@@ -83,9 +92,8 @@ def apply_volume(target: int, previous: int) -> None:
     up = delta > 0
     for index in range(steps):
         if index:
-            time.sleep(0.3)
-        if not send_volume_step(up):
-            break
+            time.sleep(0.25)
+        send_volume_step(up)
 
 
 def hdmi_sink() -> str:
@@ -128,7 +136,12 @@ def load_state() -> None:
 
 
 def apply_change(previous: dict, current: dict) -> None:
-    if bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
+    command_id = int(current.get("hdmiCommandId") or 0)
+    previous_id = int(previous.get("hdmiCommandId") or 0)
+    command = current.get("hdmiCommand")
+    if command_id != previous_id and command in ("on", "off"):
+        send_power(command == "on")
+    elif bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
         send_power(bool(current.get("hdmiOn")))
     if int(previous.get("volume", 0)) != int(current.get("volume", 0)):
         apply_volume(int(current["volume"]), int(previous["volume"]))
@@ -177,7 +190,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         with LOCK:
             previous = dict(STATE)
-            for key in ("volume", "hdmiOn", "scheduleEnabled", "onTime", "offTime"):
+            for key in (
+                "volume",
+                "hdmiOn",
+                "hdmiCommand",
+                "hdmiCommandId",
+                "scheduleEnabled",
+                "onTime",
+                "offTime",
+            ):
                 if key in payload:
                     STATE[key] = payload[key]
             current = dict(STATE)

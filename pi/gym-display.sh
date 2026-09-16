@@ -4,8 +4,10 @@ set -euo pipefail
 DISPLAY_URL="${VVK_DISPLAY_URL:-https://trainer.vastervikclimbing.se/display}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
+FULLSCREEN="$SCRIPT_DIR/chromium-fullscreen.py"
 LOG="${HOME}/.vvk-gym-display.log"
 PROFILE="${HOME}/.config/vvk-gym-chromium"
+CDP_PORT="${VVK_CDP_PORT:-9222}"
 
 log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
@@ -13,6 +15,7 @@ log() {
 
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export VVK_CDP_PORT="$CDP_PORT"
 
 if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
   for socket in "$XDG_RUNTIME_DIR"/wayland-*; do
@@ -23,7 +26,7 @@ if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
   done
 fi
 
-log "startar gymskärm (DISPLAY=${DISPLAY} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-})"
+log "startar gymskärm"
 sleep 4
 
 if command -v pactl >/dev/null; then
@@ -37,38 +40,57 @@ fi
 if ! pgrep -f "gym-helper.py" >/dev/null; then
   python3 "$HELPER" >>"$LOG" 2>&1 &
   sleep 0.4
-  log "gym-helper startad"
-else
-  log "gym-helper redan igång"
 fi
 
-CHROMIUM="$(command -v chromium-browser || command -v chromium || true)"
+CHROMIUM="$(command -v chromium || command -v chromium-browser || true)"
 if [[ -z "$CHROMIUM" ]]; then
-  log "Chromium saknas. Installera Raspberry Pi OS med skrivbord."
+  log "Chromium saknas"
   exit 1
 fi
 
 pkill -f "vvk-gym-chromium" >/dev/null 2>&1 || true
 sleep 0.3
-mkdir -p "$PROFILE"
+mkdir -p "$PROFILE/Default"
+PREF="$PROFILE/Default/Preferences"
+if [[ -f "$PREF" ]]; then
+  python3 - "$PREF" <<'PY'
+import json, sys
+path = sys.argv[1]
+try:
+    data = json.loads(open(path, encoding="utf-8").read())
+except Exception:
+    raise SystemExit(0)
+profile = data.setdefault("profile", {})
+profile["exited_cleanly"] = True
+profile["exit_type"] = "Normal"
+open(path, "w", encoding="utf-8").write(json.dumps(data))
+PY
+fi
 
-log "öppnar $DISPLAY_URL i helskärm med $CHROMIUM"
-exec "$CHROMIUM" \
+log "öppnar $DISPLAY_URL"
+"$CHROMIUM" \
   --user-data-dir="$PROFILE" \
-  --class=Gymskarm \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port="$CDP_PORT" \
   --start-fullscreen \
-  --start-maximized \
   --no-first-run \
   --no-default-browser-check \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-session-crashed-bubble \
-  --hide-crash-restore-bubble \
   --password-store=basic \
   --autoplay-policy=no-user-gesture-required \
-  --check-for-update-interval=31536000 \
-  --allow-running-insecure-content \
-  --unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8743 \
-  --disable-web-security \
-  --disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PushMessaging \
-  "$DISPLAY_URL"
+  --disable-background-networking \
+  --disable-sync \
+  --disable-component-update \
+  --disable-features=PushMessaging,Translation,MediaRouter \
+  "$DISPLAY_URL" \
+  >/dev/null 2>&1 &
+CHROME_PID=$!
+
+python3 "$FULLSCREEN" >/dev/null 2>&1 || true
+
+if command -v wtype >/dev/null; then
+  wtype -k F11 >/dev/null 2>&1 || true
+elif command -v xdotool >/dev/null; then
+  xdotool search --onlyvisible --class chromium windowactivate --sync key F11 >/dev/null 2>&1 || true
+fi
+
+wait "$CHROME_PID"

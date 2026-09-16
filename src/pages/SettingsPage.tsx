@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
+import type { HdmiCommand } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
 function SizeField({
@@ -43,9 +45,21 @@ export function SettingsPage() {
     displayHardware,
   } = snapshot.settings
 
+  const [hdmiPressed, setHdmiPressed] = useState<HdmiCommand | null>(null)
+
   const patchHardware = (partial: Partial<typeof displayHardware>) => {
     updateSettings({
       displayHardware: { ...displayHardware, ...partial },
+    })
+  }
+
+  const pulseHdmi = (hdmiCommand: HdmiCommand) => {
+    setHdmiPressed(hdmiCommand)
+    window.setTimeout(() => setHdmiPressed(null), 180)
+    patchHardware({
+      hdmiOn: hdmiCommand === 'on',
+      hdmiCommand,
+      hdmiCommandId: Date.now(),
     })
   }
 
@@ -157,16 +171,16 @@ export function SettingsPage() {
           </label>
           <div className="hdmi-toggle">
             <button
-              className={displayHardware.hdmiOn ? 'button' : 'button-ghost'}
+              className={hdmiPressed === 'on' ? 'button' : 'button-ghost'}
               type="button"
-              onClick={() => patchHardware({ hdmiOn: true })}
+              onClick={() => pulseHdmi('on')}
             >
               Skärm på
             </button>
             <button
-              className={!displayHardware.hdmiOn ? 'button' : 'button-ghost'}
+              className={hdmiPressed === 'off' ? 'button' : 'button-ghost'}
               type="button"
-              onClick={() => patchHardware({ hdmiOn: false })}
+              onClick={() => pulseHdmi('off')}
             >
               Skärm av
             </button>

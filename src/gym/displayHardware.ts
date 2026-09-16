@@ -1,6 +1,10 @@
+export type HdmiCommand = 'on' | 'off'
+
 export type DisplayHardware = {
   volume: number
   hdmiOn: boolean
+  hdmiCommand: HdmiCommand | null
+  hdmiCommandId: number
   scheduleEnabled: boolean
   onTime: string
   offTime: string
@@ -9,6 +13,8 @@ export type DisplayHardware = {
 export const defaultDisplayHardware: DisplayHardware = {
   volume: 80,
   hdmiOn: true,
+  hdmiCommand: null,
+  hdmiCommandId: 0,
   scheduleEnabled: false,
   onTime: '07:00',
   offTime: '22:00',
@@ -30,6 +36,11 @@ export function normalizeDisplayHardware(
   return {
     volume: clamp(Math.round(Number(partial?.volume ?? defaultDisplayHardware.volume)), 0, 100),
     hdmiOn: partial?.hdmiOn !== false,
+    hdmiCommand:
+      partial?.hdmiCommand === 'on' || partial?.hdmiCommand === 'off'
+        ? partial.hdmiCommand
+        : null,
+    hdmiCommandId: Math.max(0, Math.round(Number(partial?.hdmiCommandId ?? 0) || 0)),
     scheduleEnabled: Boolean(partial?.scheduleEnabled),
     onTime: isClockTime(partial?.onTime ?? '')
       ? partial!.onTime!

@@ -24,36 +24,17 @@ Workflown i `.github/workflows/pages.yml` bygger från `main` och publicerar via
 
 ## Raspberry Pi
 
-Klona repot (ingen Node-installation behövs — scriptet öppnar den publicerade gymsidan):
+Ett kommando installerar paket, klonar (eller uppdaterar) repot, sätter autostart och skrivbordets autologin:
 
 ```bash
-sudo apt update
-sudo apt install -y git cec-utils v4l-utils
-git clone https://github.com/VKC276/ClimbTraining.git ~/ClimbTraining
-chmod +x ~/ClimbTraining/pi/gym-display.sh ~/ClimbTraining/pi/gym-helper.py
-~/ClimbTraining/pi/gym-display.sh
+curl -fsSL https://raw.githubusercontent.com/VKC276/ClimbTraining/main/pi/install.sh | bash
 ```
 
-När koden uppdaterats på GitHub:
+Starta om när den är klar: `sudo reboot`
 
-```bash
-cd ~/ClimbTraining
-git pull
-```
-
-Autostart (labwc på nyare Raspberry Pi OS ignorerar `~/.config/autostart`):
-
-```bash
-chmod +x ~/ClimbTraining/pi/install-autostart.sh
-~/ClimbTraining/pi/install-autostart.sh
-sudo raspi-config
-```
-
-Under **System Options → Boot / Auto Login** välj **Desktop autologin**. Starta om.
+Uppdatera senare med samma kommando, eller `bash ~/ClimbTraining/pi/install.sh`.
 
 Logg: `cat ~/.vvk-gym-display.log`
-
-Scriptet startar CEC-hjälparen och öppnar gymsidan i helskärm.
 
 ## Lokalt
 

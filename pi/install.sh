@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_URL="${VVK_REPO_URL:-https://github.com/VKC276/ClimbTraining.git}"
+DEST="${VVK_REPO_DIR:-$HOME/ClimbTraining}"
+
+if [[ "$(id -u)" -eq 0 ]]; then
+  echo "Kör installern som den vanliga Pi-användaren, inte som root."
+  exit 1
+fi
+
+sudo_run() {
+  if sudo -n true 2>/dev/null; then
+    sudo "$@"
+    return
+  fi
+  sudo "$@"
+}
+
+echo "Installerar gymskärmen..."
+sudo_run apt-get update -y
+sudo_run apt-get install -y git cec-utils python3
+if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
+  sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
+fi
+
+if [[ -d "$DEST/.git" ]]; then
+  git -C "$DEST" pull --ff-only
+else
+  git clone "$REPO_URL" "$DEST"
+fi
+
+chmod +x \
+  "$DEST/pi/install.sh" \
+  "$DEST/pi/install-autostart.sh" \
+  "$DEST/pi/gym-display.sh" \
+  "$DEST/pi/gym-helper.py" \
+  "$DEST/pi/chromium-fullscreen.py"
+
+"$DEST/pi/install-autostart.sh"
+
+if command -v raspi-config >/dev/null; then
+  sudo_run raspi-config nonint do_boot_behaviour B4 || true
+fi
+
+echo
+echo "Klart. Gymskärmen startar vid nästa inloggning till skrivbordet."
+echo "Starta om nu: sudo reboot"
+echo "Logg: $HOME/.vvk-gym-display.log"
