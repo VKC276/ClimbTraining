@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -22,7 +23,7 @@ VOLUME_GATE = threading.Lock()
 SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
 SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
-VOLUME_STEP = 5
+LAST_TV_VOLUME_AT = 0.0
 STATE = {
     "volume": 80,
     "volumeCommand": None,
@@ -129,6 +130,50 @@ def speak_text(text: str, color_id: str = "") -> None:
         log(f"tal `{cleaned}`")
 
 
+def parse_audio_status(text: str) -> int | None:
+    match = re.search(
+        r"(?:audio status|volume up|volume down):\s*([0-9a-f]{1,2})",
+        text,
+        re.I,
+    )
+    if not match:
+        match = re.search(r"\b7a:([0-9a-f]{2})\b", text, re.I)
+    if not match:
+        return None
+    raw = int(match.group(1), 16)
+    if raw == 0x7F:
+        return None
+    if raw & 0x80:
+        return 0
+    return max(0, min(100, raw & 0x7F))
+
+
+def read_tv_volume() -> int | None:
+    text = send_cec_command("gas")
+    value = parse_audio_status(text)
+    if value is not None:
+        return value
+    text = send_cec_command("tx 40:71")
+    return parse_audio_status(text)
+
+
+def refresh_tv_volume(force: bool = False) -> None:
+    global LAST_TV_VOLUME_AT
+    now = time.time()
+    if not force and now - LAST_TV_VOLUME_AT < 5:
+        return
+    if VOLUME_GATE.locked():
+        return
+    LAST_TV_VOLUME_AT = now
+    value = read_tv_volume()
+    if value is None:
+        return
+    with LOCK:
+        STATE["volume"] = value
+        save_state()
+    log(f"TV-volym {value}")
+
+
 def send_power(on: bool) -> None:
     if on:
         send_cec_command(f"on {TV_ADDRESS}")
@@ -141,7 +186,7 @@ def send_volume_step(up: bool) -> None:
     send_cec_command("volup" if up else "voldown")
 
 
-def send_volume_burst(up: bool, steps: int = VOLUME_STEP) -> None:
+def send_volume_burst(up: bool, steps: int = 5) -> None:
     if not VOLUME_GATE.acquire(blocking=False):
         log("volym hoppas över")
         return
@@ -154,19 +199,34 @@ def send_volume_burst(up: bool, steps: int = VOLUME_STEP) -> None:
 
 def apply_volume(target: int, previous: int) -> None:
     target = max(0, min(100, int(target)))
+    actual = read_tv_volume()
+    if actual is not None:
+        previous = actual
     previous = int(previous)
     if target == 0:
         send_cec_command("mute")
+        synced = read_tv_volume()
+        if synced is not None:
+            with LOCK:
+                STATE["volume"] = synced
+                save_state()
         return
     delta = target - previous
     if delta == 0:
+        if actual is not None:
+            with LOCK:
+                STATE["volume"] = actual
+                save_state()
         return
-    steps = min(8, max(1, abs(delta) // VOLUME_STEP))
-    up = delta > 0
-    for index in range(steps):
-        if index:
-            time.sleep(0.25)
-        send_volume_step(up)
+    steps = min(25, max(1, abs(delta)))
+    command = "volup" if delta > 0 else "voldown"
+    send_cec_command("\n".join([command] * steps), timeout=min(18, 5 + steps * 0.25))
+    time.sleep(0.25)
+    synced = read_tv_volume()
+    if synced is not None:
+        with LOCK:
+            STATE["volume"] = synced
+            save_state()
 
 
 def hdmi_sink() -> str:
@@ -222,7 +282,13 @@ def apply_change(previous: dict, current: dict) -> None:
     if volume_id != previous_volume_id and volume_command in ("up", "down"):
         send_volume_burst(volume_command == "up")
     elif int(previous.get("volume", 0)) != int(current.get("volume", 0)):
-        apply_volume(int(current["volume"]), int(previous["volume"]))
+        if not VOLUME_GATE.acquire(blocking=False):
+            log("volym hoppas över")
+            return
+        try:
+            apply_volume(int(current["volume"]), int(previous["volume"]))
+        finally:
+            VOLUME_GATE.release()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -245,6 +311,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
+        refresh_tv_volume()
         self.send_response(200)
         self._cors()
         self.send_header("Content-Type", "application/json")

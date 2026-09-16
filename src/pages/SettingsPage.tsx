@@ -1,35 +1,86 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
-import { volumeButtonStep, type HdmiCommand, type VolumeCommand } from '../gym/displayHardware'
+import type { HdmiCommand } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
-function SizeField({
+function LockButton({
+  locked,
+  label,
+  onToggle,
+}: {
+  locked: boolean
+  label: string
+  onToggle: () => void
+}) {
+  return (
+    <button
+      className={locked ? 'lock-button' : 'lock-button lock-button-open'}
+      type="button"
+      aria-pressed={!locked}
+      aria-label={locked ? `Lås upp ${label}` : `Lås ${label}`}
+      onClick={onToggle}
+    >
+      {locked ? (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm7 13H7v-9h10v9Z"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M17 8h-1V6a4 4 0 0 0-7.8-1.2l1.6.8A2 2 0 0 1 14 6v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm0 11H7v-9h10v9Z"
+          />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+function LockedSlider({
   label,
   value,
+  min,
+  max,
+  step,
   onChange,
 }: {
   label: string
   value: number
+  min: number
+  max: number
+  step: number
   onChange: (value: number) => void
 }) {
+  const [locked, setLocked] = useState(true)
   return (
-    <label className="field">
-      <span>
-        {label} {value} %
-      </span>
-      <input
-        type="range"
-        min={idleSizeMin}
-        max={idleSizeMax}
-        step={5}
-        value={value}
-        onChange={(event) => onChange(clampIdleSize(Number(event.target.value)))}
+    <div className="locked-slider">
+      <label className="field">
+        <span>
+          {label} {value} %
+        </span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={locked}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+      </label>
+      <LockButton
+        locked={locked}
+        label={label}
+        onToggle={() => setLocked((current) => !current)}
       />
-    </label>
+    </div>
   )
 }
 
@@ -46,35 +97,10 @@ export function SettingsPage() {
   } = snapshot.settings
 
   const [hdmiPressed, setHdmiPressed] = useState<HdmiCommand | null>(null)
-  const [volumePressed, setVolumePressed] = useState<VolumeCommand | null>(null)
 
   const patchHardware = (partial: Partial<typeof displayHardware>) => {
     updateSettings({
       displayHardware: { ...displayHardware, ...partial },
-    })
-  }
-
-  const volumeBusy = useRef(false)
-
-  const pulseVolume = (volumeCommand: VolumeCommand) => {
-    if (volumeBusy.current) return
-    volumeBusy.current = true
-    window.setTimeout(() => {
-      volumeBusy.current = false
-    }, 450)
-    setVolumePressed(volumeCommand)
-    window.setTimeout(() => setVolumePressed(null), 180)
-    patchHardware({
-      volume: Math.min(
-        100,
-        Math.max(
-          0,
-          displayHardware.volume +
-            (volumeCommand === 'up' ? volumeButtonStep : -volumeButtonStep),
-        ),
-      ),
-      volumeCommand,
-      volumeCommandId: Date.now(),
     })
   }
 
@@ -163,41 +189,46 @@ export function SettingsPage() {
 
         <fieldset>
           <legend>Storlek i vila</legend>
-          <SizeField
+          <LockedSlider
             label="Logga"
             value={idleLogoSize}
-            onChange={(idleLogoSize) => updateSettings({ idleLogoSize })}
+            min={idleSizeMin}
+            max={idleSizeMax}
+            step={5}
+            onChange={(idleLogoSize) => updateSettings({ idleLogoSize: clampIdleSize(idleLogoSize) })}
           />
-          <SizeField
+          <LockedSlider
             label="Klocka"
             value={idleClockSize}
-            onChange={(idleClockSize) => updateSettings({ idleClockSize })}
+            min={idleSizeMin}
+            max={idleSizeMax}
+            step={5}
+            onChange={(idleClockSize) =>
+              updateSettings({ idleClockSize: clampIdleSize(idleClockSize) })
+            }
           />
-          <SizeField
+          <LockedSlider
             label="Skärmnummer"
             value={idleScreenIdSize}
-            onChange={(idleScreenIdSize) => updateSettings({ idleScreenIdSize })}
+            min={idleSizeMin}
+            max={idleSizeMax}
+            step={5}
+            onChange={(idleScreenIdSize) =>
+              updateSettings({ idleScreenIdSize: clampIdleSize(idleScreenIdSize) })
+            }
           />
         </fieldset>
 
         <fieldset>
           <legend>Gymskärm</legend>
-          <div className="hdmi-toggle">
-            <button
-              className={volumePressed === 'down' ? 'button' : 'button-ghost'}
-              type="button"
-              onClick={() => pulseVolume('down')}
-            >
-              Volym ner
-            </button>
-            <button
-              className={volumePressed === 'up' ? 'button' : 'button-ghost'}
-              type="button"
-              onClick={() => pulseVolume('up')}
-            >
-              Volym upp
-            </button>
-          </div>
+          <LockedSlider
+            label="Volym"
+            value={displayHardware.volume}
+            min={0}
+            max={100}
+            step={1}
+            onChange={(volume) => patchHardware({ volume })}
+          />
           <div className="hdmi-toggle">
             <button
               className={hdmiPressed === 'on' ? 'button' : 'button-ghost'}
@@ -233,11 +264,11 @@ export function SettingsPage() {
                 type="time"
                 value={displayHardware.onTime}
                 onChange={(event) =>
-                patchHardware({
-                  onTime: event.target.value,
-                  scheduleEnabled: true,
-                })
-              }
+                  patchHardware({
+                    onTime: event.target.value,
+                    scheduleEnabled: true,
+                  })
+                }
               />
             </label>
             <label className="field">
@@ -246,11 +277,11 @@ export function SettingsPage() {
                 type="time"
                 value={displayHardware.offTime}
                 onChange={(event) =>
-                patchHardware({
-                  offTime: event.target.value,
-                  scheduleEnabled: true,
-                })
-              }
+                  patchHardware({
+                    offTime: event.target.value,
+                    scheduleEnabled: true,
+                  })
+                }
               />
             </label>
           </div>

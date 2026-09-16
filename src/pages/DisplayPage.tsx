@@ -39,6 +39,14 @@ export function DisplayPage() {
       },
       [hardware, updateSettings],
     ),
+    useCallback(
+      (volume) => {
+        updateSettings({
+          displayHardware: { ...hardware, volume },
+        })
+      },
+      [hardware, updateSettings],
+    ),
   )
 
   useEffect(() => {

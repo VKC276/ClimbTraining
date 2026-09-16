@@ -1512,6 +1512,41 @@ select,
   padding: 0;
 }
 
+.field input[type='range']:disabled {
+  opacity: 0.42;
+}
+
+.locked-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.lock-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--chalk);
+  cursor: pointer;
+}
+
+.lock-button svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.lock-button-open {
+  border-color: var(--hold);
+  color: var(--hold);
+}
+
 .hdmi-toggle {
   display: flex;
   flex-wrap: wrap;

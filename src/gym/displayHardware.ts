@@ -26,7 +26,6 @@ export const defaultDisplayHardware: DisplayHardware = {
 }
 
 export const PI_HELPER_URL = 'http://127.0.0.1:8743'
-export const volumeButtonStep = 5
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
