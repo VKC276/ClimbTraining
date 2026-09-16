@@ -12,7 +12,7 @@ function clockKey(now: Date) {
 async function pushToPi(hardware: DisplayHardware) {
   const response = await fetch(`${PI_HELPER_URL}/command`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(hardware),
   })
   if (!response.ok) throw new Error('Pi-hjälparen svarade inte')

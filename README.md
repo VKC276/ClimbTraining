@@ -51,13 +51,9 @@ sudo raspi-config
 
 Under **System Options → Boot / Auto Login** välj **Desktop autologin**. Starta om.
 
-Logg om det inte startar: `cat ~/.vvk-gym-display.log`
+Logg: `cat ~/.vvk-gym-display.log`
 
-Scriptet startar en lokal CEC-hjälpare och öppnar gymsidan i **helskärm** (inte kiosk). F11 eller Alt+Tab räcker om du behöver skrivbordet; kör scriptet igen för att gå tillbaka till helskärm. Volymreglaget styr TV:ns egen volym via HDMI-CEC. Skärm på/av går samma väg.
-
-Grafikstorlek för logga, klocka och skärm-id i vila ställs var för sig under **Inställningar**.
-
-Gymskärmen visar ett **skärm-id** nere till höger i vila. Ange samma kod i kontrollpanelen. Under **Inställningar** styrs volym, skärm på/av och schema via HDMI-CEC.
+Scriptet startar CEC-hjälparen och öppnar gymsidan i helskärm.
 
 ## Lokalt
 

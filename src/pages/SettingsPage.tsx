@@ -124,10 +124,6 @@ export function SettingsPage() {
 
         <fieldset>
           <legend>Storlek i vila</legend>
-          <p className="settings-note">
-            Gäller bara gymskärmen. På en 5K-TV behöver logga och klocka oftast
-            höjas var för sig.
-          </p>
           <SizeField
             label="Logga"
             value={idleLogoSize}
@@ -146,13 +142,9 @@ export function SettingsPage() {
         </fieldset>
 
         <fieldset>
-          <legend>Gymskärm (Pi)</legend>
-          <p className="settings-note">
-            Volym och skärm på/av går till TV:n via HDMI-CEC. Pi-ljudet hålls
-            öppet så pip når skärmen.
-          </p>
+          <legend>Gymskärm</legend>
           <label className="field">
-            <span>TV-volym {displayHardware.volume} %</span>
+            <span>Volym {displayHardware.volume} %</span>
             <input
               type="range"
               min={0}
@@ -189,9 +181,6 @@ export function SettingsPage() {
             />
             <span>
               <strong>Schema</strong>
-              <span className="choice-hint">
-                TV:n slås på och av via HDMI-CEC vid tiderna nedan.
-              </span>
             </span>
           </label>
           <div className="field-row">
@@ -214,10 +203,7 @@ export function SettingsPage() {
           </div>
         </fieldset>
 
-        <p className="settings-note">
-          Kopplad till skärm {screenId}. Koden syns nere till höger på
-          gymskärmen i vila.
-        </p>
+        <p className="settings-note">Kopplad till skärm {screenId}.</p>
       </form>
 
       <p className="trainer-footer">

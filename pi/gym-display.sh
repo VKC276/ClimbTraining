@@ -31,14 +31,7 @@ if command -v pactl >/dev/null; then
   if [[ -n "${SINK:-}" ]]; then
     pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
     pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-    log "ljud till HDMI-sink $SINK"
-  else
-    log "ingen HDMI-sink i Pulse — kolla ljudutgång i skrivbordsinställningar"
   fi
-fi
-
-if ! command -v cec-client >/dev/null; then
-  log "tips: sudo apt install cec-utils"
 fi
 
 if ! pgrep -f "gym-helper.py" >/dev/null; then
@@ -75,5 +68,7 @@ exec "$CHROMIUM" \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   --allow-running-insecure-content \
-  --disable-features=BlockInsecurePrivateNetworkRequests,PushMessaging \
+  --unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8743 \
+  --disable-web-security \
+  --disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PushMessaging \
   "$DISPLAY_URL"
