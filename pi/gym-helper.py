@@ -17,7 +17,8 @@ PORT = 8743
 STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
-SPEAK_LOCK = threading.Lock()
+SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
+SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
 STATE = {
     "volume": 80,
@@ -70,27 +71,59 @@ def send_cec_command(cec_command: str, timeout: int = 8) -> str:
     return (process.stdout or "") + (process.stderr or "")
 
 
-def speak_text(text: str) -> None:
-    cleaned = "".join(ch for ch in str(text) if ch.isalnum() or ch in " !-åäöÅÄÖ")
-    cleaned = cleaned.strip()[:40]
-    if not cleaned:
-        return
-    binary = shutil.which("espeak-ng") or shutil.which("espeak")
-    if not binary:
-        log("espeak-ng saknas")
-        return
-    try:
-        with SPEAK_LOCK:
+def play_audio_file(path: Path) -> bool:
+    players = (
+        ["paplay", str(path)],
+        ["pw-play", str(path)],
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(path)],
+        ["mpv", "--no-video", "--really-quiet", str(path)],
+        ["aplay", str(path)],
+    )
+    for command in players:
+        if not shutil.which(command[0]):
+            continue
+        code, _ = run(command)
+        if code == 0:
+            log(f"ljudfil `{path.name}`")
+            return True
+    return False
+
+
+def play_color_file(color_id: str) -> bool:
+    safe = "".join(ch for ch in color_id.lower() if ch.isalnum())[:20]
+    if not safe:
+        return False
+    SOUND_DIR.mkdir(parents=True, exist_ok=True)
+    for ext in SOUND_EXTS:
+        path = SOUND_DIR / f"{safe}{ext}"
+        if path.is_file() and play_audio_file(path):
+            return True
+    return False
+
+
+def speak_text(text: str, color_id: str = "") -> None:
+    with SPEAK_LOCK:
+        if color_id and play_color_file(color_id):
+            return
+        cleaned = "".join(ch for ch in str(text) if ch.isalnum() or ch in " !-åäöÅÄÖ")
+        cleaned = cleaned.strip()[:40]
+        if not cleaned:
+            return
+        binary = shutil.which("espeak-ng") or shutil.which("espeak")
+        if not binary:
+            log("espeak-ng saknas")
+            return
+        try:
             subprocess.run(
                 [binary, "-v", "sv", "-s", "125", "-a", "180", "-g", "8", cleaned],
                 check=False,
                 capture_output=True,
                 timeout=8,
             )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        log(f"espeak: {error}")
-        return
-    log(f"tal `{cleaned}`")
+        except (OSError, subprocess.TimeoutExpired) as error:
+            log(f"espeak: {error}")
+            return
+        log(f"tal `{cleaned}`")
 
 
 def send_power(on: bool) -> None:
@@ -249,8 +282,13 @@ class Handler(BaseHTTPRequestHandler):
             save_state()
         log(f"kommando {payload}")
         speak = payload.get("speak")
-        if isinstance(speak, str) and speak.strip():
-            threading.Thread(target=speak_text, args=(speak,), daemon=True).start()
+        sound_id = payload.get("soundId") if isinstance(payload.get("soundId"), str) else ""
+        if (isinstance(speak, str) and speak.strip()) or sound_id:
+            threading.Thread(
+                target=speak_text,
+                args=(speak if isinstance(speak, str) else "", sound_id),
+                daemon=True,
+            ).start()
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
         self.send_response(200)
         self._cors()

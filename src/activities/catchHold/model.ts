@@ -9,6 +9,7 @@ export type CatchHoldColorId =
   | 'black'
   | 'white'
   | 'turquoise'
+  | 'mint'
 
 export type CatchHoldColor = {
   id: CatchHoldColorId
@@ -26,6 +27,7 @@ export const catchHoldColors: CatchHoldColor[] = [
   { id: 'purple', name: 'Lila', spokenName: 'lila', hex: '#8e24aa' },
   { id: 'pink', name: 'Rosa', spokenName: 'råsa', hex: '#ec407a' },
   { id: 'turquoise', name: 'Turkos', spokenName: 'turkås', hex: '#00acc1' },
+  { id: 'mint', name: 'Mint', spokenName: 'mint', hex: '#66bb6a' },
   { id: 'black', name: 'Svart', spokenName: 'svart', hex: '#212121' },
   { id: 'white', name: 'Vit', spokenName: 'vit', hex: '#f5f5f5' },
 ]
