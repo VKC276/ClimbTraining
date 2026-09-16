@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Dölj muspekaren efter stillestånd, som i Windows.
+# Dölj muspekaren. WarpCursor används inte: den cementerar pekaren i ett hörn.
 IDLE="${VVK_CURSOR_IDLE:-2}"
 LOG="${HOME}/.vvk-gym-display.log"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"

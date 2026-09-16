@@ -45,6 +45,7 @@ PY
 
 python3 - <<'PY'
 from pathlib import Path
+import re
 import shutil
 
 home = Path.home() / ".config/labwc/rc.xml"
@@ -57,17 +58,15 @@ if not home.exists():
         encoding="utf-8",
     )
 text = home.read_text(encoding="utf-8")
-if "HideCursor" in text:
-    raise SystemExit(0)
+# WarpCursor efter HideCursor flyttar pekaren till ett hörn och visar den igen.
+text = re.sub(r'\s*<keybind key="A-W-h">[\s\S]*?</keybind>', "", text)
 bind = """    <keybind key="A-W-h">
       <action name="HideCursor" />
-      <action name="WarpCursor" x="-1" y="-1" />
     </keybind>
 """
 if "<keyboard>" in text:
     text = text.replace("<keyboard>", "<keyboard>\n" + bind, 1)
 elif "<keyboard " in text:
-    import re
     text = re.sub(r"(<keyboard\b[^>]*>)", r"\1\n" + bind, text, count=1)
 else:
     text = text.replace("</labwc_config>", f"  <keyboard>\n{bind}  </keyboard>\n</labwc_config>")
