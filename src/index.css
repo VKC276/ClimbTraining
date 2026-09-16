@@ -121,6 +121,11 @@ a {
   user-select: none;
 }
 
+html.display-no-cursor,
+html.display-no-cursor * {
+  cursor: none !important;
+}
+
 .display-sync-badge {
   position: fixed;
   top: 0.75rem;

@@ -19,6 +19,10 @@ export function DisplayPage() {
   useIdleTimeout()
   useWakeLock(true)
   useEffect(() => {
+    document.documentElement.classList.add('display-no-cursor')
+    return () => document.documentElement.classList.remove('display-no-cursor')
+  }, [])
+  useEffect(() => {
     void unlockDensityAudio()
     const id = window.setInterval(() => {
       void unlockDensityAudio()

@@ -17,9 +17,12 @@ PORT = 8743
 STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
+SPEAK_LOCK = threading.Lock()
+VOLUME_GATE = threading.Lock()
 SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
 SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
+VOLUME_STEP = 5
 STATE = {
     "volume": 80,
     "volumeCommand": None,
@@ -138,6 +141,17 @@ def send_volume_step(up: bool) -> None:
     send_cec_command("volup" if up else "voldown")
 
 
+def send_volume_burst(up: bool, steps: int = VOLUME_STEP) -> None:
+    if not VOLUME_GATE.acquire(blocking=False):
+        log("volym hoppas över")
+        return
+    try:
+        command = "volup" if up else "voldown"
+        send_cec_command("\n".join([command] * max(1, steps)), timeout=6)
+    finally:
+        VOLUME_GATE.release()
+
+
 def apply_volume(target: int, previous: int) -> None:
     target = max(0, min(100, int(target)))
     previous = int(previous)
@@ -147,7 +161,7 @@ def apply_volume(target: int, previous: int) -> None:
     delta = target - previous
     if delta == 0:
         return
-    steps = min(6, max(1, abs(delta) // 10))
+    steps = min(8, max(1, abs(delta) // VOLUME_STEP))
     up = delta > 0
     for index in range(steps):
         if index:
@@ -206,7 +220,7 @@ def apply_change(previous: dict, current: dict) -> None:
     previous_volume_id = int(previous.get("volumeCommandId") or 0)
     volume_command = current.get("volumeCommand")
     if volume_id != previous_volume_id and volume_command in ("up", "down"):
-        send_volume_step(volume_command == "up")
+        send_volume_burst(volume_command == "up")
     elif int(previous.get("volume", 0)) != int(current.get("volume", 0)):
         apply_volume(int(current["volume"]), int(previous["volume"]))
 

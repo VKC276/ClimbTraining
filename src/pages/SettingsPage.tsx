@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { SyncStatusBadge } from '../components/SyncStatusBadge'
-import type { HdmiCommand, VolumeCommand } from '../gym/displayHardware'
+import { volumeButtonStep, type HdmiCommand, type VolumeCommand } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
 function SizeField({
@@ -54,13 +54,24 @@ export function SettingsPage() {
     })
   }
 
+  const volumeBusy = useRef(false)
+
   const pulseVolume = (volumeCommand: VolumeCommand) => {
+    if (volumeBusy.current) return
+    volumeBusy.current = true
+    window.setTimeout(() => {
+      volumeBusy.current = false
+    }, 450)
     setVolumePressed(volumeCommand)
     window.setTimeout(() => setVolumePressed(null), 180)
     patchHardware({
       volume: Math.min(
         100,
-        Math.max(0, displayHardware.volume + (volumeCommand === 'up' ? 10 : -10)),
+        Math.max(
+          0,
+          displayHardware.volume +
+            (volumeCommand === 'up' ? volumeButtonStep : -volumeButtonStep),
+        ),
       ),
       volumeCommand,
       volumeCommandId: Date.now(),

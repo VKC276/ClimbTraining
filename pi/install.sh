@@ -19,7 +19,7 @@ sudo_run() {
 
 echo "Installerar gymskärmen..."
 sudo_run apt-get update -y
-sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data
+sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wtype
 if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
   sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 fi
