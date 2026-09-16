@@ -202,6 +202,17 @@ class Handler(BaseHTTPRequestHandler):
                 if key in payload:
                     STATE[key] = payload[key]
             current = dict(STATE)
+            schedule_changed = (
+                previous.get("scheduleEnabled") != current.get("scheduleEnabled")
+                or previous.get("onTime") != current.get("onTime")
+                or previous.get("offTime") != current.get("offTime")
+            )
+            manual = int(current.get("hdmiCommandId") or 0) != int(
+                previous.get("hdmiCommandId") or 0
+            )
+            if schedule_changed and not manual and current.get("scheduleEnabled"):
+                STATE["hdmiOn"] = scheduled_on(current["onTime"], current["offTime"])
+                current = dict(STATE)
             save_state()
         log(f"kommando {payload}")
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
@@ -217,8 +228,8 @@ def scheduled_on(on_time: str, off_time: str) -> bool:
     current = now.tm_hour * 60 + now.tm_min
 
     def minutes(value: str) -> int:
-        hours, mins = value.split(":")
-        return int(hours) * 60 + int(mins)
+        parts = str(value).split(":")
+        return int(parts[0]) * 60 + int(parts[1])
 
     start = minutes(str(on_time))
     stop = minutes(str(off_time))
@@ -257,6 +268,13 @@ def main() -> None:
     load_state()
     unmute_pi_hdmi()
     threading.Thread(target=scheduler, daemon=True).start()
+    if STATE.get("scheduleEnabled"):
+        with LOCK:
+            previous = dict(STATE)
+            STATE["hdmiOn"] = scheduled_on(STATE["onTime"], STATE["offTime"])
+            current = dict(STATE)
+            save_state()
+        threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     log(f"vvk gym helper on http://{HOST}:{PORT}")
     server.serve_forever()

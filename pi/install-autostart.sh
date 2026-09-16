@@ -7,39 +7,42 @@ LINE="$DISPLAY_SH &"
 
 chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/chromium-fullscreen.py"
 
+rm -f "$HOME/.config/autostart/gym-display.desktop"
+
+if [[ -f "$HOME/.config/wayfire.ini" ]]; then
+  python3 - "$HOME/.config/wayfire.ini" <<'PY'
+import pathlib, re, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+cleaned = re.sub(r"(?m)^gym\s*=\s*.*gym-display\.sh.*\n?", "", text)
+if cleaned != text:
+    path.write_text(cleaned, encoding="utf-8")
+PY
+fi
+
 mkdir -p "$HOME/.config/labwc"
 if [[ ! -f "$HOME/.config/labwc/autostart" && -f /etc/xdg/labwc/autostart ]]; then
   cp /etc/xdg/labwc/autostart "$HOME/.config/labwc/autostart"
 fi
 touch "$HOME/.config/labwc/autostart"
-if ! grep -Fqs "gym-display.sh" "$HOME/.config/labwc/autostart"; then
-  printf '\n# VVK gymskärm\n%s\n' "$LINE" >> "$HOME/.config/labwc/autostart"
-fi
-
-mkdir -p "$HOME/.config/autostart"
-cat > "$HOME/.config/autostart/gym-display.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Gymskärm
-Exec=$DISPLAY_SH
-Hidden=false
-X-GNOME-Autostart-enabled=true
-EOF
-
-if [[ -f "$HOME/.config/wayfire.ini" ]] && ! grep -Fqs "gym-display.sh" "$HOME/.config/wayfire.ini"; then
-  if ! grep -qs '^\[autostart\]' "$HOME/.config/wayfire.ini"; then
-    printf '\n[autostart]\n' >> "$HOME/.config/wayfire.ini"
-  fi
-  printf 'gym = %s\n' "$DISPLAY_SH" >> "$HOME/.config/wayfire.ini"
-fi
+python3 - "$HOME/.config/labwc/autostart" "$LINE" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+line = sys.argv[2]
+text = path.read_text(encoding="utf-8")
+kept = [
+    row
+    for row in text.splitlines()
+    if "gym-display.sh" not in row and row.strip() != "# VVK gymskärm"
+]
+kept.append("# VVK gymskärm")
+kept.append(line)
+path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
+PY
 
 echo "Autostart är installerad för $(whoami)."
-echo "  labwc:  $HOME/.config/labwc/autostart"
-echo "  XDG:    $HOME/.config/autostart/gym-display.desktop"
-echo
-echo "Kräver automatisk inloggning till skrivbordet:"
-echo "  sudo raspi-config"
-echo "  System Options → Boot / Auto Login → Desktop autologin"
+echo "  En startväg: $HOME/.config/labwc/autostart"
+echo "  XDG- och Wayfire-dubbletter tas bort."
 echo
 echo "Starta om: sudo reboot"
 echo "Logg: $HOME/.vvk-gym-display.log"

@@ -14,6 +14,7 @@ type ActivityStageProps = {
   time: Date
   activity: Activity
   variant: 'display' | 'trainer'
+  screenId?: string
   onEnd?: () => void
 }
 
@@ -61,6 +62,7 @@ export function ActivityStage({
   time,
   activity,
   variant,
+  screenId,
   onEnd,
 }: ActivityStageProps) {
   const fill =
@@ -78,10 +80,11 @@ export function ActivityStage({
       className={`activity-stage activity-stage-${variant}${fill ? ' activity-stage-fill' : ''}`}
     >
       <header className="activity-top">
-        <div>
+        <div className="activity-top-title">
           <p className="eyebrow">Träningsmoment</p>
           <h1>{activity.title}</h1>
         </div>
+        {screenId ? <p className="activity-screen-id">{screenId}</p> : <span />}
         <DigitalClock time={time} size="overlay" />
       </header>
 

@@ -312,10 +312,35 @@ a {
 }
 
 .activity-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.activity-top-title {
+  min-width: 0;
+}
+
+.activity-top-title h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-screen-id {
+  margin: 0;
+  color: rgba(244, 239, 230, 0.72);
+  font-family: var(--display);
+  font-size: clamp(1.15rem, 2.4vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.activity-top .digital-clock-overlay {
+  justify-self: end;
 }
 
 .activity-body {
@@ -1503,8 +1528,12 @@ select,
 
 @media (max-width: 720px) {
   .activity-top {
-    flex-direction: column;
-    align-items: flex-start;
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .activity-top .digital-clock-overlay {
+    justify-self: start;
   }
 
   .display-page {

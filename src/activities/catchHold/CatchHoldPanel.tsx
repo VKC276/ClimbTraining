@@ -9,7 +9,7 @@ import {
   pickCatchHoldColor,
   type CatchHoldColorId,
 } from './model'
-import { speakColorName } from './speech'
+import { announceCatchHoldColor } from './speech'
 
 type CatchHoldPanelProps = {
   variant: 'display' | 'trainer'
@@ -93,14 +93,7 @@ export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
   useEffect(() => {
     if (variant !== 'display') return
     if (!config.soundOn || session.phase !== 'color' || !color) return
-
-    const speak = () => speakColorName(color.name)
-    speak()
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true })
-      return () => window.speechSynthesis.removeEventListener('voiceschanged', speak)
-    }
-    return undefined
+    void announceCatchHoldColor(color)
   }, [variant, config.soundOn, session.phase, session.round, color])
 
   const startGame = () => {

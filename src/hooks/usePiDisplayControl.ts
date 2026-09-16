@@ -26,6 +26,10 @@ export function usePiDisplayControl(
   const lastHdmi = useRef(hardware.hdmiOn)
   const lastCommandId = useRef(hardware.hdmiCommandId)
   const lastScheduleMinute = useRef('')
+  const hdmiOnRef = useRef(hardware.hdmiOn)
+  const updateHdmiOnRef = useRef(updateHdmiOn)
+  hdmiOnRef.current = hardware.hdmiOn
+  updateHdmiOnRef.current = updateHdmiOn
 
   useEffect(() => {
     const payload = JSON.stringify(hardware)
@@ -47,6 +51,16 @@ export function usePiDisplayControl(
     )
     return () => window.clearTimeout(timer)
   }, [hardware])
+
+  useEffect(() => {
+    if (!hardware.scheduleEnabled) return
+    const shouldOn = screenScheduledOn(
+      new Date(),
+      hardware.onTime,
+      hardware.offTime,
+    )
+    if (shouldOn !== hdmiOnRef.current) updateHdmiOnRef.current(shouldOn)
+  }, [hardware.scheduleEnabled, hardware.onTime, hardware.offTime])
 
   useEffect(() => {
     if (!hardware.scheduleEnabled) return

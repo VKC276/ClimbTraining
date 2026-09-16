@@ -27,7 +27,12 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function isClockTime(value: string) {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+  return /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)
+}
+
+function clockHm(value: string) {
+  const [hours, minutes] = value.split(':')
+  return `${hours}:${minutes}`
 }
 
 export function normalizeDisplayHardware(
@@ -43,10 +48,10 @@ export function normalizeDisplayHardware(
     hdmiCommandId: Math.max(0, Math.round(Number(partial?.hdmiCommandId ?? 0) || 0)),
     scheduleEnabled: Boolean(partial?.scheduleEnabled),
     onTime: isClockTime(partial?.onTime ?? '')
-      ? partial!.onTime!
+      ? clockHm(partial!.onTime!)
       : defaultDisplayHardware.onTime,
     offTime: isClockTime(partial?.offTime ?? '')
-      ? partial!.offTime!
+      ? clockHm(partial!.offTime!)
       : defaultDisplayHardware.offTime,
   }
 }

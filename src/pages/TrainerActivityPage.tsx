@@ -11,7 +11,7 @@ export function TrainerActivityPage() {
   const navigate = useNavigate()
   const { activityId = '' } = useParams()
   const activity = getActivity(activityId)
-  const { startActivity, endActivity, bumpInteraction } = useGym()
+  const { startActivity, endActivity, bumpInteraction, screenId } = useGym()
 
   useEffect(() => {
     if (!activity) return
@@ -34,6 +34,7 @@ export function TrainerActivityPage() {
         time={now}
         activity={activity}
         variant="trainer"
+        screenId={screenId ?? ''}
         onEnd={() => {
           endActivity()
           void navigate('/')

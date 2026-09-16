@@ -127,6 +127,13 @@ function speakPhrase(text: string) {
   window.speechSynthesis.speak(utter)
 }
 
+export async function playCueTone(frequency: number, duration = 0.38) {
+  await unlockDensityAudio()
+  const ctx = getAudioContext()
+  if (ctx.state === 'suspended') await ctx.resume()
+  playTone(ctx, frequency, ctx.currentTime + 0.02, duration, 'sine', 0.3)
+}
+
 export type DensitySignalPhrase = 'vila' | 'klättra' | 'klart' | 'byt' | 'go' | 'varning'
 
 export async function playDensitySignal(

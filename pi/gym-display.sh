@@ -13,6 +13,13 @@ log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
 }
 
+LOCK="${HOME}/.vvk-gym-display.lock"
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  log "gymskärm körs redan, avbryter"
+  exit 0
+fi
+
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export VVK_CDP_PORT="$CDP_PORT"
@@ -77,6 +84,7 @@ log "öppnar $DISPLAY_URL"
   --no-default-browser-check \
   --password-store=basic \
   --autoplay-policy=no-user-gesture-required \
+  --enable-speech-dispatcher \
   --disable-background-networking \
   --disable-sync \
   --disable-component-update \

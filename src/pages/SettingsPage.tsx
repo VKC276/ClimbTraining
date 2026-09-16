@@ -203,7 +203,12 @@ export function SettingsPage() {
               <input
                 type="time"
                 value={displayHardware.onTime}
-                onChange={(event) => patchHardware({ onTime: event.target.value })}
+                onChange={(event) =>
+                patchHardware({
+                  onTime: event.target.value,
+                  scheduleEnabled: true,
+                })
+              }
               />
             </label>
             <label className="field">
@@ -211,7 +216,12 @@ export function SettingsPage() {
               <input
                 type="time"
                 value={displayHardware.offTime}
-                onChange={(event) => patchHardware({ offTime: event.target.value })}
+                onChange={(event) =>
+                patchHardware({
+                  offTime: event.target.value,
+                  scheduleEnabled: true,
+                })
+              }
               />
             </label>
           </div>

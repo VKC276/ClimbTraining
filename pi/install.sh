@@ -19,7 +19,9 @@ sudo_run() {
 
 echo "Installerar gymskärmen..."
 sudo_run apt-get update -y
-sudo_run apt-get install -y git cec-utils python3
+sudo_run apt-get install -y git cec-utils python3 speech-dispatcher espeak-ng
+sudo_run apt-get install -y speech-dispatcher-espeak-ng || true
+systemctl --user enable --now speech-dispatcher.service 2>/dev/null || true
 if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
   sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 fi
@@ -44,6 +46,9 @@ chmod +x \
 
 "$DEST/pi/install-autostart.sh"
 
+if command -v timedatectl >/dev/null; then
+  sudo_run timedatectl set-timezone Europe/Stockholm || true
+fi
 if command -v raspi-config >/dev/null; then
   sudo_run raspi-config nonint do_boot_behaviour B4 || true
 fi
