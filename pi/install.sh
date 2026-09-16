@@ -25,7 +25,12 @@ if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null;
 fi
 
 if [[ -d "$DEST/.git" ]]; then
-  git -C "$DEST" pull --ff-only
+  git -C "$DEST" remote set-url origin "$REPO_URL"
+  git -C "$DEST" fetch origin
+  branch="$(git -C "$DEST" rev-parse --abbrev-ref origin/HEAD 2>/dev/null || true)"
+  branch="${branch#origin/}"
+  branch="${branch:-main}"
+  git -C "$DEST" reset --hard "origin/$branch"
 else
   git clone "$REPO_URL" "$DEST"
 fi
