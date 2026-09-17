@@ -269,7 +269,7 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLastLine": PRESENCE["lastLine"],
                     "csiLines": PRESENCE["lines"],
                     "csiOkLines": PRESENCE["csiLines"],
-                    "csiHelper": "csi-4",
+                    "csiHelper": "csi-5",
                 }
             )
         self.wfile.write(body.encode())
@@ -423,27 +423,27 @@ def csi_plugged() -> bool:
 
 
 def open_csi_serial(port: str) -> int:
-    """Öppna USB-UART som `stty raw` + `cat`, utan DTR-reset."""
-    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-    attrs = termios.tcgetattr(fd)
-    attrs[0] = 0
-    attrs[1] = 0
-    attrs[3] = 0
-    attrs[2] |= termios.CLOCAL | termios.CREAD | termios.CS8
-    attrs[2] &= ~(
-        termios.PARENB
-        | termios.CSTOPB
-        | termios.CRTSCTS
-        | termios.HUPCL
-        | termios.CSIZE
+    """Samma öppning som csi-sniff.sh: stty + cat (bara läsa)."""
+    real = os.path.realpath(port)
+    subprocess.run(
+        [
+            "stty",
+            "-F",
+            real,
+            "115200",
+            "cs8",
+            "-cstopb",
+            "-parenb",
+            "raw",
+            "-echo",
+            "-crtscts",
+            "-hupcl",
+            "clocal",
+        ],
+        check=False,
+        capture_output=True,
     )
-    attrs[2] |= termios.CS8
-    attrs[4] = termios.B115200
-    attrs[5] = termios.B115200
-    attrs[6][termios.VMIN] = 0
-    attrs[6][termios.VTIME] = 0
-    termios.tcsetattr(fd, termios.TCSANOW, attrs)
-    return fd
+    return os.open(real, os.O_RDONLY | os.O_NOCTTY)
 
 
 def request_hdmi(on: bool, reason: str) -> None:
