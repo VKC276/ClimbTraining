@@ -1,50 +1,21 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { activities } from '../activities'
 import { Logo } from '../components/Logo'
-import { SyncStatusBadge } from '../components/SyncStatusBadge'
+import { TrainerCorner } from '../components/TrainerCorner'
 import { useGym } from '../gym/GymContext'
 
 export function TrainerHomePage() {
-  const { startActivity, snapshot, updateSettings } = useGym()
-  const hardware = snapshot.settings.displayHardware
-  const [hdmiPressed, setHdmiPressed] = useState(false)
-
-  const turnScreenOn = () => {
-    setHdmiPressed(true)
-    window.setTimeout(() => setHdmiPressed(false), 180)
-    updateSettings({
-      displayHardware: {
-        ...hardware,
-        hdmiOn: true,
-        hdmiCommand: 'on',
-        hdmiCommandId: Date.now(),
-      },
-    })
-  }
+  const { startActivity } = useGym()
 
   return (
     <main className="trainer-page">
+      <TrainerCorner />
       <header className="trainer-header">
-        <div className="trainer-brand">
-          <Logo className="trainer-logo" />
-          <div className="trainer-screen-on">
-            <button
-              className={hdmiPressed ? 'button' : 'button-ghost'}
-              type="button"
-              onClick={turnScreenOn}
-            >
-              Skärm på
-            </button>
-          </div>
-        </div>
+        <Logo className="trainer-logo" />
         <div>
           <p className="eyebrow">Kontrollpanel</p>
           <h1>Välj träningsmoment</h1>
-          <p className="lede">
-            Momentet visas på gymskärmen.
-          </p>
-          <SyncStatusBadge />
+          <p className="lede">Momentet visas på gymskärmen.</p>
         </div>
       </header>
 

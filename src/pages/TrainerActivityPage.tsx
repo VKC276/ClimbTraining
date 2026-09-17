@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ActivityStage } from '../components/ActivityStage'
 import { getActivity } from '../activities'
-import { SyncStatusBadge } from '../components/SyncStatusBadge'
+import { TrainerCorner } from '../components/TrainerCorner'
 import { useGym } from '../gym/GymContext'
 import { useNow } from '../hooks/useNow'
 
@@ -29,7 +29,7 @@ export function TrainerActivityPage() {
 
   return (
     <main className="trainer-page trainer-activity">
-      <SyncStatusBadge />
+      <TrainerCorner />
       <ActivityStage
         time={now}
         activity={activity}

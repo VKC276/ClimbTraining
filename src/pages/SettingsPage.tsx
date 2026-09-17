@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
-import { SyncStatusBadge } from '../components/SyncStatusBadge'
+import { TrainerCorner } from '../components/TrainerCorner'
 import type { HdmiCommand } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
@@ -123,7 +123,7 @@ export function SettingsPage() {
           Viloläget visar logga och klocka. Under ett pass ligger klockan alltid
           digitalt uppe till höger.
         </p>
-        <SyncStatusBadge />
+        <TrainerCorner />
       </header>
 
       <form className="settings-form" onSubmit={(event) => event.preventDefault()}>

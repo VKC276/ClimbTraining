@@ -1349,24 +1349,6 @@ html.display-no-cursor *,
   margin-bottom: 2rem;
 }
 
-.trainer-brand {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.trainer-brand .trainer-logo {
-  flex-shrink: 0;
-}
-
-.trainer-screen-on {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-
 .activity-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
@@ -1409,11 +1391,18 @@ html.display-no-cursor *,
   margin-top: 2rem;
 }
 
-.sync-badge {
+.trainer-corner {
   position: absolute;
   top: 1.15rem;
   right: 0;
   z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trainer-screen-btn,
+.sync-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1424,6 +1413,14 @@ html.display-no-cursor *,
   border-radius: 12px;
 }
 
+.trainer-screen-btn {
+  border: 0;
+  background: rgba(0, 166, 81, 0.18);
+  color: #7dffb0;
+  cursor: pointer;
+}
+
+.trainer-screen-btn svg,
 .sync-badge svg {
   width: 1.35rem;
   height: 1.35rem;
