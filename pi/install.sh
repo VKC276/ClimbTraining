@@ -46,6 +46,8 @@ chmod +x \
 
 "$DEST/pi/install-autostart.sh"
 
+pkill -f gym-helper.py >/dev/null 2>&1 || true
+
 if command -v timedatectl >/dev/null; then
   sudo_run timedatectl set-timezone Europe/Stockholm || true
 fi
@@ -54,6 +56,6 @@ if command -v raspi-config >/dev/null; then
 fi
 
 echo
-echo "Klart. Gymskärmen startar vid nästa inloggning till skrivbordet."
-echo "Starta om nu: sudo reboot"
+echo "Klart. Starta om skrivbordssessionen eller: sudo reboot"
+echo "Gammal gym-helper stoppas; den nya startar med gymskärmen."
 echo "Logg: $HOME/.vvk-gym-display.log"

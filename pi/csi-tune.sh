@@ -82,7 +82,9 @@ def status_line(state: dict) -> str:
         room = "närvaro (håll)"
     else:
         room = "tomt"
-    if not live:
+    if not state.get("csiHelper"):
+        relative = "GAMMAL gym-helper kör. pkill -f gym-helper.py och starta om skärmen (eller reboot)."
+    elif not live:
         if last:
             relative = f"ingen CSI_DATA än — senast: {last}"
         else:
@@ -94,6 +96,7 @@ def status_line(state: dict) -> str:
     else:
         relative = f"{abs(gap):.1f} över tröskel ({stdev / threshold * 100:.0f} %)"
     return (
+        f"helper {state.get('csiHelper') or 'gammal (starta om gym-helper)'}\n"
         f"sensor {room:16}  port {port}\n"
         f"signal {stdev:5.1f}  [{bar(stdev, threshold)}]  tröskel {threshold:.1f}\n"
         f"läge   {relative}\n"

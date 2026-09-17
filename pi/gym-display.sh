@@ -66,10 +66,11 @@ log "startar gymskärm"
 sleep 4
 max_pi_audio
 
-if ! pgrep -f "gym-helper.py" >/dev/null; then
-  python3 "$HELPER" >>"$LOG" 2>&1 &
-  sleep 0.4
-fi
+pkill -f gym-helper.py >/dev/null 2>&1 || true
+sleep 0.4
+python3 "$HELPER" >>"$LOG" 2>&1 &
+sleep 0.4
+log "gym-helper omstartad"
 
 CHROMIUM="$(command -v chromium || command -v chromium-browser || true)"
 if [[ -z "$CHROMIUM" ]]; then

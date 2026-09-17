@@ -272,6 +272,7 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLastLine": PRESENCE["lastLine"],
                     "csiLines": PRESENCE["lines"],
                     "csiOkLines": PRESENCE["csiLines"],
+                    "csiHelper": "csi-2",
                 }
             )
         self.wfile.write(body.encode())
@@ -503,6 +504,8 @@ def presence_loop() -> None:
                         continue
                     PRESENCE["lines"] = int(PRESENCE["lines"]) + 1
                     PRESENCE["lastLine"] = line[:180]
+                    if int(PRESENCE["lines"]) <= 8 or line.startswith("CSI_"):
+                        log(f"CSI-usb {line[:120]}")
                     amplitudes = parse_csi_line(line)
                     if amplitudes is None:
                         continue
