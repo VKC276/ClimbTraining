@@ -3,6 +3,7 @@ import { ActivityStage } from '../components/ActivityStage'
 import { IdleScreen } from '../components/IdleScreen'
 import { getActivity } from '../activities'
 import { unlockDensityAudio } from '../activities/densityCircuit/signals'
+import { SyncStatusBadge } from '../components/SyncStatusBadge'
 import { useGym } from '../gym/GymContext'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useNow } from '../hooks/useNow'
@@ -72,9 +73,7 @@ export function DisplayPage() {
       }
     >
       {syncStatus !== 'connected' ? (
-        <p className={`display-sync-badge sync-${syncStatus}`}>
-          {syncStatus === 'connecting' ? 'Synkar…' : 'Synk offline'}
-        </p>
+        <SyncStatusBadge className="display-sync-badge" />
       ) : null}
       {activity ? (
         <ActivityStage
