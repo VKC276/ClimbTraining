@@ -10,7 +10,6 @@ import select
 import shutil
 import subprocess
 import sys
-import termios
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -269,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLastLine": PRESENCE["lastLine"],
                     "csiLines": PRESENCE["lines"],
                     "csiOkLines": PRESENCE["csiLines"],
-                    "csiHelper": "csi-5",
+                    "csiHelper": "csi-6",
                 }
             )
         self.wfile.write(body.encode())
@@ -490,7 +489,7 @@ def presence_loop() -> None:
         PRESENCE["lines"] = 0
         PRESENCE["csiLines"] = 0
         detector = PresenceDetector(
-            window_size=20,
+            window_size=16,
             motion_threshold=float(STATE.get("csiThreshold") or 3.0),
             hold_seconds=float(STATE.get("csiHoldSeconds") or 600),
         )

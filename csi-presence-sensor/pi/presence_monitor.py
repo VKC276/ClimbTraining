@@ -56,13 +56,27 @@ def parse_csi_line(line):
     return amplitudes
 
 
+def useful_subcarriers(amplitudes):
+    """Hoppa över LLTF-kanter och DC — de hoppar av radio, inte av folk."""
+    if not amplitudes:
+        return None
+    n = len(amplitudes)
+    if n >= 64:
+        return amplitudes[6:32] + amplitudes[33:59]
+    if n < 16:
+        return None
+    edge = max(2, n // 16)
+    mid = n // 2
+    return amplitudes[edge:mid] + amplitudes[mid + 1 : n - edge]
+
+
 class PresenceDetector:
-    """Håller ett glidande fönster av medelamplitud och flaggar rörelse
-    när standardavvikelsen i fönstret överstiger ett tröskelvärde.
+    """Rörelse = median av per-subcarriers stdev över ett kort fönster.
+    Medelamplitud över alla bin blandar paketstorlek/RSSI och sitter fast på 'rörelse'.
     Presence hålls kvar en stund efter senaste rörelsen (hold_seconds)."""
 
-    def __init__(self, window_size=20, motion_threshold=3.0, hold_seconds=120):
-        self.window = deque(maxlen=window_size)
+    def __init__(self, window_size=16, motion_threshold=3.0, hold_seconds=120):
+        self.frames = deque(maxlen=window_size)
         self.motion_threshold = motion_threshold
         self.hold_seconds = hold_seconds
         self.last_motion_time = 0.0
@@ -70,17 +84,25 @@ class PresenceDetector:
         self.last_motion = False
 
     def feed(self, amplitudes):
-        if not amplitudes:
+        vec = useful_subcarriers(amplitudes)
+        if not vec:
             return False
-
-        mean_amp = statistics.fmean(amplitudes)
-        self.window.append(mean_amp)
+        if self.frames and len(vec) != len(self.frames[0]):
+            self.frames.clear()
+        self.frames.append(vec)
 
         motion_now = False
-        if len(self.window) >= max(5, self.window.maxlen // 2):
-            stdev = statistics.pstdev(self.window)
-            self.last_stdev = stdev
-            if stdev > self.motion_threshold:
+        need = max(6, self.frames.maxlen // 2)
+        if len(self.frames) >= need:
+            bins = len(vec)
+            stdevs = [
+                statistics.pstdev(frame[i] for frame in self.frames)
+                for i in range(bins)
+            ]
+            stdevs.sort()
+            score = stdevs[len(stdevs) // 2]
+            self.last_stdev = score
+            if score > self.motion_threshold:
                 motion_now = True
                 self.last_motion_time = time.time()
         self.last_motion = motion_now
