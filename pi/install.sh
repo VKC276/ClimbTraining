@@ -45,6 +45,7 @@ chmod +x \
   "$DEST/pi/gym-display.sh" \
   "$DEST/pi/gym-helper.py" \
   "$DEST/pi/csi-tune.sh" \
+  "$DEST/pi/csi-sniff.sh" \
   "$DEST/pi/chromium-fullscreen.py"
 
 "$DEST/pi/install-autostart.sh"

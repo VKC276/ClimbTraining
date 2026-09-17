@@ -272,7 +272,7 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLastLine": PRESENCE["lastLine"],
                     "csiLines": PRESENCE["lines"],
                     "csiOkLines": PRESENCE["csiLines"],
-                    "csiHelper": "csi-2",
+                    "csiHelper": "csi-3",
                 }
             )
         self.wfile.write(body.encode())
@@ -426,24 +426,8 @@ def csi_plugged() -> bool:
 
 
 def open_csi_serial(port: str):
-    ser = serial.Serial()
-    ser.port = port
-    ser.baudrate = 115200
-    ser.timeout = 0.5
-    ser.dsrdtr = False
-    ser.rtscts = False
-    ser.open()
-    try:
-        ser.rts = False
-        ser.dtr = True
-        time.sleep(0.05)
-        ser.dtr = False
-        time.sleep(0.05)
-        ser.dtr = True
-    except (OSError, AttributeError):
-        pass
-    time.sleep(0.4)
-    ser.reset_input_buffer()
+    ser = serial.Serial(port=port, baudrate=115200, timeout=0.5)
+    time.sleep(0.3)
     return ser
 
 
@@ -505,14 +489,8 @@ def presence_loop() -> None:
                 waiting = ser.in_waiting
                 chunk = ser.read(waiting or 1)
                 if not chunk:
-                    if int(PRESENCE["lines"]) == 0 and time.time() - silent_since > 6:
-                        log("CSI-usb tyst, nollställer ESP32")
-                        try:
-                            ser.dtr = False
-                            time.sleep(0.1)
-                            ser.dtr = True
-                        except (OSError, AttributeError):
-                            pass
+                    if int(PRESENCE["lines"]) == 0 and time.time() - silent_since > 8:
+                        log("CSI-usb tyst efter 8 s")
                         silent_since = time.time()
                     continue
                 silent_since = time.time()
