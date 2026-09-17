@@ -425,6 +425,28 @@ def csi_plugged() -> bool:
     return bool(serial_candidates())
 
 
+def open_csi_serial(port: str):
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = 115200
+    ser.timeout = 0.5
+    ser.dsrdtr = False
+    ser.rtscts = False
+    ser.open()
+    try:
+        ser.rts = False
+        ser.dtr = True
+        time.sleep(0.05)
+        ser.dtr = False
+        time.sleep(0.05)
+        ser.dtr = True
+    except (OSError, AttributeError):
+        pass
+    time.sleep(0.4)
+    ser.reset_input_buffer()
+    return ser
+
+
 def request_hdmi(on: bool, reason: str) -> None:
     with LOCK:
         state = dict(STATE)
@@ -458,19 +480,7 @@ def presence_loop() -> None:
             continue
         port = ports[0]
         try:
-            ser = serial.Serial()
-            ser.port = port
-            ser.baudrate = 115200
-            ser.timeout = 1
-            ser.dsrdtr = False
-            ser.rtscts = False
-            ser.dtr = False
-            ser.rts = False
-            ser.open()
-            ser.dtr = False
-            ser.rts = False
-            time.sleep(1.5)
-            ser.reset_input_buffer()
+            ser = open_csi_serial(port)
         except OSError as error:
             log(f"CSI-port {port}: {error}")
             time.sleep(3)
@@ -486,6 +496,7 @@ def presence_loop() -> None:
         )
         log(f"CSI-sensor på {port}")
         pending = ""
+        silent_since = time.time()
         try:
             while True:
                 with LOCK:
@@ -494,7 +505,17 @@ def presence_loop() -> None:
                 waiting = ser.in_waiting
                 chunk = ser.read(waiting or 1)
                 if not chunk:
+                    if int(PRESENCE["lines"]) == 0 and time.time() - silent_since > 6:
+                        log("CSI-usb tyst, nollställer ESP32")
+                        try:
+                            ser.dtr = False
+                            time.sleep(0.1)
+                            ser.dtr = True
+                        except (OSError, AttributeError):
+                            pass
+                        silent_since = time.time()
                     continue
+                silent_since = time.time()
                 pending += chunk.decode("utf-8", errors="ignore")
                 pending = pending.replace("\r\n", "\n").replace("\r", "\n")
                 while "\n" in pending:
