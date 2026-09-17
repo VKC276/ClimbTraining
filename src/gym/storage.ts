@@ -8,8 +8,11 @@ import { normalizeTechniqueFocusConfig } from '../activities/techniqueFocus/mode
 import { idleTechniqueFocusSession } from '../activities/techniqueFocus/model'
 import { normalizeEmomConfig } from '../activities/emom/model'
 import { idleEmomSession } from '../activities/emom/model'
-import { normalizeChoosePathConfig } from '../activities/choosePath/model'
-import { idleChoosePathSession } from '../activities/choosePath/model'
+import {
+  idleChoosePathSession,
+  normalizeChoosePathConfig,
+  normalizeChoosePathSession,
+} from '../activities/choosePath/model'
 import { normalizeFingerboardConfig } from '../activities/fingerboard/model'
 import { idleFingerboardSession } from '../activities/fingerboard/model'
 import { normalizeTimerConfig } from '../activities/timer/model'
@@ -122,10 +125,7 @@ function mergeSnapshot(
     }
   }
   if (parsed.choosePathSession) {
-    snapshot.choosePathSession = {
-      ...idleChoosePathSession,
-      ...parsed.choosePathSession,
-    }
+    snapshot.choosePathSession = normalizeChoosePathSession(parsed.choosePathSession)
   }
   if (parsed.fingerboardSession) {
     snapshot.fingerboardSession = {

@@ -98,7 +98,7 @@ export function ActivityStage({
             Tillbaka till menyn
           </Link>
           <button className="button" type="button" onClick={onEnd}>
-            Avsluta och visa vila
+            Avsluta
           </button>
         </footer>
       ) : null}

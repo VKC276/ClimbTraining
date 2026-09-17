@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent } from 'react'
 import { FitScale } from '../../components/FitScale'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
@@ -14,6 +14,7 @@ import {
   formatEmomClock,
   idleEmomSession,
   isRestExercise,
+  moveEmomExercise,
   normalizeExerciseText,
   type DensitySignalId,
 } from './model'
@@ -28,6 +29,10 @@ export function EmomPanel({ variant }: EmomPanelProps) {
   const config = snapshot.settings.emom
   const session = snapshot.emomSession
   const [draft, setDraft] = useState('')
+  const [dragging, setDragging] = useState<number | null>(null)
+  const exercisesRef = useRef(config.exercises)
+  const dragFrom = useRef<number | null>(null)
+  exercisesRef.current = config.exercises
   const running = session.phase === 'running'
   const remaining = Math.max(0, Math.ceil((session.phaseEndsAt - now.getTime()) / 1000))
   const exercise = emomExercise(config.exercises, session.round)
@@ -130,6 +135,31 @@ export function EmomPanel({ variant }: EmomPanelProps) {
     })
   }
 
+  const onDragPointerDown = (index: number, event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragFrom.current = index
+    setDragging(index)
+  }
+
+  const onDragPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const from = dragFrom.current
+    if (from === null) return
+    const hit = document.elementFromPoint(event.clientX, event.clientY)
+    const row = hit?.closest('[data-emom-index]')
+    if (!row) return
+    const to = Number(row.getAttribute('data-emom-index'))
+    if (!Number.isInteger(to) || to === from) return
+    updateEmom({ exercises: moveEmomExercise(exercisesRef.current, from, to) })
+    dragFrom.current = to
+    setDragging(to)
+  }
+
+  const onDragPointerUp = () => {
+    dragFrom.current = null
+    setDragging(null)
+  }
+
   const previewSignal = (
     event: MouseEvent<HTMLButtonElement>,
     phrase: DensitySignalPhrase,
@@ -161,10 +191,28 @@ export function EmomPanel({ variant }: EmomPanelProps) {
           <form className="tech-focus-editor" onSubmit={addExercise}>
             <ul className="tech-focus-list">
               {config.exercises.map((item, index) => (
-                <li key={`${item}-${index}`}>
-                  <span>
-                    Minut {index + 1}: {item}
-                  </span>
+                <li
+                  key={`${item}-${index}`}
+                  className={dragging === index ? 'emom-item dragging' : 'emom-item'}
+                  data-emom-index={index}
+                >
+                  <button
+                    className="emom-drag"
+                    type="button"
+                    aria-label="Ändra ordning"
+                    onPointerDown={(event) => onDragPointerDown(index, event)}
+                    onPointerMove={onDragPointerMove}
+                    onPointerUp={onDragPointerUp}
+                    onPointerCancel={onDragPointerUp}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M8 7h2v2H8V7Zm6 0h2v2h-2V7ZM8 11h2v2H8v-2Zm6 0h2v2h-2v-2ZM8 15h2v2H8v-2Zm6 0h2v2h-2v-2Z"
+                      />
+                    </svg>
+                  </button>
+                  <span>{item}</span>
                   <button
                     className="button-ghost tech-focus-remove"
                     type="button"

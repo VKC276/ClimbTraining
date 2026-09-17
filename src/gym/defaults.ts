@@ -66,10 +66,7 @@ export function defaultSnapshot(now = Date.now()): GymSnapshot {
         ...defaultEmomConfig,
         exercises: [...defaultEmomConfig.exercises],
       },
-      choosePath: {
-        ...defaultChoosePathConfig,
-        stories: defaultChoosePathConfig.stories.map((story) => ({ ...story })),
-      },
+      choosePath: { ...defaultChoosePathConfig },
       fingerboard: { ...defaultFingerboardConfig },
       timer: { ...defaultTimerConfig },
     },

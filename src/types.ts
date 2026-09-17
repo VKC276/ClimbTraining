@@ -63,5 +63,4 @@ export type Activity = {
   id: string
   title: string
   description: string
-  status: 'ready' | 'soon'
 }

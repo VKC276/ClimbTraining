@@ -29,9 +29,6 @@ export function TrainerHomePage() {
             to={`/pass/${activity.id}`}
             onClick={() => startActivity(activity.id)}
           >
-            <span className={`activity-card-status${activity.status === 'ready' ? ' is-ready' : ''}`}>
-              {activity.status === 'soon' ? 'Byggs ut' : 'Redo'}
-            </span>
             <strong>{activity.title}</strong>
             <span>{activity.description}</span>
           </Link>

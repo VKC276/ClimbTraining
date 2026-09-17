@@ -16,7 +16,7 @@ export function HallGatePage() {
   return (
     <main className="trainer-page hall-gate">
       <Logo className="trainer-logo" />
-      <p className="eyebrow">Kontrollpanel</p>
+      <p className="eyebrow">Anslut till skärm</p>
       <h1>Ange skärm-id</h1>
       <p className="lede">
         Koden står nere till höger på gymskärmen när den är i vila. Fyra tecken.

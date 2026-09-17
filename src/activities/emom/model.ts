@@ -99,6 +99,22 @@ export function emomExercise(exercises: string[], round: number) {
   return exercises[(round - 1) % exercises.length] ?? ''
 }
 
+export function moveEmomExercise(exercises: string[], from: number, to: number) {
+  if (
+    from === to ||
+    from < 0 ||
+    to < 0 ||
+    from >= exercises.length ||
+    to >= exercises.length
+  ) {
+    return exercises
+  }
+  const next = [...exercises]
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  return next
+}
+
 export function isRestExercise(text: string) {
   return /^\s*vila\s*$/i.test(text)
 }

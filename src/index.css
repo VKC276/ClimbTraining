@@ -183,7 +183,7 @@ html.display-no-cursor *,
 
 .trainer-logo {
   display: block;
-  width: min(200px, 55vw);
+  width: min(100px, 28vw);
   color: var(--logo);
 }
 
@@ -815,6 +815,42 @@ html.display-no-cursor *,
   background: var(--bg-elev);
 }
 
+.emom-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.emom-item.dragging {
+  opacity: 0.55;
+  border-color: var(--hold);
+}
+
+.emom-drag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.emom-drag svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.emom-item span {
+  min-width: 0;
+}
+
 .tech-focus-remove {
   min-height: 40px;
   padding: 0.4rem 0.75rem;
@@ -840,17 +876,9 @@ html.display-no-cursor *,
 .tech-focus-display .tech-focus-stage {
   height: 100%;
   min-height: 0;
-  background: #9a3412;
-  color: #fff7ed;
+  background: #1c1b19;
+  color: var(--chalk);
   place-items: stretch;
-}
-
-.tech-focus-spinning .tech-focus-stage {
-  background: #7c2d12;
-}
-
-.tech-focus-landed.tech-focus-display .tech-focus-stage {
-  background: #9a3412;
 }
 
 .tech-focus-spin-center {
@@ -1230,7 +1258,8 @@ html.display-no-cursor *,
 .choose-story,
 .choose-paths,
 .choose-result,
-.choose-wait {
+.choose-wait,
+.choose-clock {
   position: relative;
   z-index: 2;
   padding: 1.5rem 1.6rem;
@@ -1260,10 +1289,11 @@ html.display-no-cursor *,
 }
 
 .choose-clock {
-  margin-top: 0.8rem;
+  margin-top: 0;
   font-variant-numeric: tabular-nums;
   font-size: 2.4rem;
   font-weight: 700;
+  place-self: start end;
 }
 
 .choose-paths {
@@ -1390,23 +1420,6 @@ html.display-no-cursor *,
 .activity-card span:last-child {
   color: var(--muted);
   line-height: 1.4;
-}
-
-.activity-card-status {
-  width: fit-content;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: var(--hold-soft);
-  color: #ffb577;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.activity-card-status.is-ready {
-  background: rgba(0, 166, 81, 0.18);
-  color: #7dffb0;
 }
 
 .trainer-footer,
@@ -1849,10 +1862,8 @@ select,
   color: #e2e8f0;
 }
 
-.timer-warn .timer-stage {
-  background: #c2410c;
-  color: #fff7ed;
-  animation: emom-warn-pulse 0.7s ease-in-out infinite;
+.timer-warn .timer-clock {
+  color: #ef4444;
 }
 
 .timer-done .timer-stage {
