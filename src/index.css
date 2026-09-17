@@ -1391,8 +1391,19 @@ html.display-no-cursor *,
 .trainer-brand {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  flex-wrap: wrap;
+  width: 100%;
+}
+
+.trainer-brand .trainer-logo {
+  flex-shrink: 0;
+}
+
+.trainer-screen-on {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
 }
 
 .activity-grid {

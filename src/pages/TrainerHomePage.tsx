@@ -28,7 +28,7 @@ export function TrainerHomePage() {
       <header className="trainer-header">
         <div className="trainer-brand">
           <Logo className="trainer-logo" />
-          {!hardware.hdmiOn ? (
+          <div className="trainer-screen-on">
             <button
               className={hdmiPressed ? 'button' : 'button-ghost'}
               type="button"
@@ -36,7 +36,7 @@ export function TrainerHomePage() {
             >
               Skärm på
             </button>
-          ) : null}
+          </div>
         </div>
         <div>
           <p className="eyebrow">Kontrollpanel</p>
