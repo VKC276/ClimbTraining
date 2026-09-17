@@ -9,7 +9,6 @@ import { idleTechniqueFocusSession } from '../activities/techniqueFocus/model'
 import { normalizeEmomConfig } from '../activities/emom/model'
 import { idleEmomSession } from '../activities/emom/model'
 import {
-  idleChoosePathSession,
   normalizeChoosePathConfig,
   normalizeChoosePathSession,
 } from '../activities/choosePath/model'
