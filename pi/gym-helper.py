@@ -3,14 +3,31 @@
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+SENSOR_PI = Path(__file__).resolve().parent.parent / "csi-presence-sensor" / "pi"
+if str(SENSOR_PI) not in sys.path:
+    sys.path.insert(0, str(SENSOR_PI))
+
+try:
+    from presence_monitor import PresenceDetector, parse_csi_line
+except ImportError:
+    PresenceDetector = None
+    parse_csi_line = None
+
+try:
+    import serial
+except ImportError:
+    serial = None
 
 HOST = "127.0.0.1"
 PORT = 8743
@@ -28,7 +45,19 @@ STATE = {
     "scheduleEnabled": False,
     "onTime": "07:00",
     "offTime": "22:00",
+    "csiThreshold": 3.0,
+    "csiHoldSeconds": 600,
 }
+PRESENCE = {
+    "live_until": 0.0,
+    "present": False,
+    "motion": False,
+    "stdev": 0.0,
+    "ignore_on_until": 0.0,
+    "port": "",
+}
+CSI_ON_HOLD = 8.0
+MANUAL_OFF_HOLD = 180.0
 
 
 def log(message: str) -> None:
@@ -228,7 +257,17 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         with LOCK:
-            body = json.dumps({"ok": True, **STATE})
+            body = json.dumps(
+                {
+                    "ok": True,
+                    **STATE,
+                    "csiPort": PRESENCE["port"],
+                    "csiPresent": PRESENCE["present"],
+                    "csiLive": presence_live(),
+                    "csiMotion": PRESENCE["motion"],
+                    "csiStdev": round(float(PRESENCE["stdev"]), 1),
+                }
+            )
         self.wfile.write(body.encode())
 
     def do_POST(self) -> None:
@@ -256,6 +295,15 @@ class Handler(BaseHTTPRequestHandler):
             ):
                 if key in payload:
                     STATE[key] = payload[key]
+            if payload.get("source") == "csi-tune":
+                if "csiThreshold" in payload:
+                    STATE["csiThreshold"] = max(
+                        0.5, min(12.0, round(float(payload["csiThreshold"]) * 2) / 2)
+                    )
+                if "csiHoldSeconds" in payload:
+                    STATE["csiHoldSeconds"] = max(
+                        60, min(1800, int(float(payload["csiHoldSeconds"])))
+                    )
             current = dict(STATE)
             schedule_changed = (
                 previous.get("scheduleEnabled") != current.get("scheduleEnabled")
@@ -266,8 +314,23 @@ class Handler(BaseHTTPRequestHandler):
                 previous.get("hdmiCommandId") or 0
             )
             if schedule_changed and not manual and current.get("scheduleEnabled"):
-                STATE["hdmiOn"] = scheduled_on(current["onTime"], current["offTime"])
+                want = scheduled_on(current["onTime"], current["offTime"])
+                if presence_live() and want and not PRESENCE["present"]:
+                    want = False
+                STATE["hdmiOn"] = want
                 current = dict(STATE)
+            elif (
+                presence_live()
+                and not manual
+                and bool(current.get("hdmiOn"))
+                and not PRESENCE["present"]
+            ):
+                STATE["hdmiOn"] = bool(previous.get("hdmiOn"))
+                current = dict(STATE)
+            if manual and current.get("hdmiCommand") == "off":
+                PRESENCE["ignore_on_until"] = time.time() + MANUAL_OFF_HOLD
+            if manual and current.get("hdmiCommand") == "on":
+                PRESENCE["ignore_on_until"] = 0.0
             save_state()
         log(f"kommando {payload}")
         speak = payload.get("speak")
@@ -319,6 +382,8 @@ def scheduler() -> None:
             continue
         last_minute = minute
         want = scheduled_on(state["onTime"], state["offTime"])
+        if presence_live() and want and not PRESENCE["present"]:
+            want = False
         with LOCK:
             previous = dict(STATE)
             STATE["hdmiOn"] = want
@@ -327,17 +392,152 @@ def scheduler() -> None:
         apply_change(previous, current)
 
 
+def presence_live() -> bool:
+    return time.time() < float(PRESENCE["live_until"])
+
+
+def serial_candidates() -> list[str]:
+    forced = os.environ.get("VVK_CSI_PORT", "").strip()
+    if forced:
+        return [forced]
+    found: list[str] = []
+    for pattern in ("/dev/serial/by-id/*", "/dev/ttyUSB*", "/dev/ttyACM*"):
+        found.extend(glob.glob(pattern))
+    unique: list[str] = []
+    seen: set[str] = set()
+    for path in sorted(found, key=lambda item: (0 if "by-id" in item else 1, item)):
+        real = os.path.realpath(path)
+        if real in seen or "ttyAMA" in real or "ttyS" in os.path.basename(real):
+            continue
+        seen.add(real)
+        unique.append(path)
+    return unique
+
+
+def csi_plugged() -> bool:
+    return bool(serial_candidates())
+
+
+def request_hdmi(on: bool, reason: str) -> None:
+    with LOCK:
+        state = dict(STATE)
+        if on:
+            if time.time() < float(PRESENCE["ignore_on_until"]):
+                return
+            if state.get("scheduleEnabled") and not scheduled_on(
+                str(state["onTime"]), str(state["offTime"])
+            ):
+                return
+        if bool(state.get("hdmiOn")) == on:
+            return
+        previous = dict(STATE)
+        STATE["hdmiOn"] = on
+        current = dict(STATE)
+        save_state()
+    log(f"närvaro {reason} -> skärm {'på' if on else 'av'}")
+    apply_change(previous, current)
+
+
+def presence_loop() -> None:
+    if serial is None or parse_csi_line is None or PresenceDetector is None:
+        log("CSI-sensor hoppas över (python3-serial eller presence_monitor saknas)")
+        return
+    last_logged = None
+    seen_since = 0.0
+    while True:
+        ports = serial_candidates()
+        if not ports:
+            time.sleep(3)
+            continue
+        port = ports[0]
+        try:
+            ser = serial.Serial()
+            ser.port = port
+            ser.baudrate = 115200
+            ser.timeout = 1
+            ser.dsrdtr = False
+            ser.rtscts = False
+            ser.open()
+        except OSError as error:
+            log(f"CSI-port {port}: {error}")
+            time.sleep(3)
+            continue
+        PRESENCE["port"] = port
+        detector = PresenceDetector(
+            window_size=20,
+            motion_threshold=float(STATE.get("csiThreshold") or 3.0),
+            hold_seconds=float(STATE.get("csiHoldSeconds") or 600),
+        )
+        log(f"CSI-sensor på {port}")
+        try:
+            while True:
+                with LOCK:
+                    detector.motion_threshold = float(STATE.get("csiThreshold") or 3.0)
+                    detector.hold_seconds = float(STATE.get("csiHoldSeconds") or 600)
+                raw = ser.readline()
+                if not raw:
+                    continue
+                amplitudes = parse_csi_line(raw.decode("utf-8", errors="ignore"))
+                if amplitudes is None:
+                    continue
+                PRESENCE["live_until"] = time.time() + 8
+                motion_now = detector.feed(amplitudes)
+                present = bool(detector.presence)
+                PRESENCE["present"] = present
+                PRESENCE["motion"] = bool(motion_now)
+                PRESENCE["stdev"] = float(getattr(detector, "last_stdev", 0.0))
+                now = time.time()
+                if present:
+                    if seen_since == 0.0:
+                        seen_since = now
+                else:
+                    seen_since = 0.0
+                if present != last_logged:
+                    log(f"CSI {'närvaro' if present else 'tomt'}")
+                    last_logged = present
+                if present and now - seen_since >= CSI_ON_HOLD:
+                    request_hdmi(True, "csi")
+                elif not present:
+                    request_hdmi(False, "csi")
+        except (OSError, serial.SerialException) as error:
+            log(f"CSI-port tappad: {error}")
+        finally:
+            try:
+                ser.close()
+            except OSError:
+                pass
+            PRESENCE["live_until"] = 0.0
+            PRESENCE["present"] = False
+            PRESENCE["motion"] = False
+            PRESENCE["stdev"] = 0.0
+            PRESENCE["port"] = ""
+            last_logged = None
+            seen_since = 0.0
+            time.sleep(2)
+
+
 def main() -> None:
     load_state()
     unmute_pi_hdmi()
+    threading.Thread(target=presence_loop, daemon=True).start()
     threading.Thread(target=scheduler, daemon=True).start()
-    if STATE.get("scheduleEnabled"):
+    plugged = csi_plugged()
+    if STATE.get("scheduleEnabled") and not plugged:
         with LOCK:
             previous = dict(STATE)
             STATE["hdmiOn"] = scheduled_on(STATE["onTime"], STATE["offTime"])
             current = dict(STATE)
             save_state()
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
+    elif plugged:
+        log("CSI-sensor inkopplad, TV väntar på rörelse")
+        if STATE.get("scheduleEnabled") and not scheduled_on(STATE["onTime"], STATE["offTime"]):
+            with LOCK:
+                previous = dict(STATE)
+                STATE["hdmiOn"] = False
+                current = dict(STATE)
+                save_state()
+            threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     log(f"vvk gym helper on http://{HOST}:{PORT}")
     server.serve_forever()
