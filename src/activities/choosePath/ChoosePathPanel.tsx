@@ -116,7 +116,7 @@ export function ChoosePathPanel({ variant }: ChoosePathPanelProps) {
                 Klar – de hann!
               </button>
               <button
-                className="button-ghost"
+                className="button button-stop"
                 type="button"
                 onClick={() => setChoosePathSession({ ...idleChoosePathSession })}
               >
@@ -125,7 +125,7 @@ export function ChoosePathPanel({ variant }: ChoosePathPanelProps) {
             </>
           ) : (
             <>
-              <button className="button" type="button" onClick={startLava}>
+              <button className="button button-start" type="button" onClick={startLava}>
                 {session.phase === 'idle' ? 'Starta' : 'Kör igen'}
               </button>
               {session.phase !== 'idle' ? (

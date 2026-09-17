@@ -303,11 +303,11 @@ export function DensityCircuitPanel({ variant }: DensityCircuitPanelProps) {
       {variant === 'trainer' ? (
         <div className="density-controls">
           {running ? (
-            <button className="button" type="button" onClick={stopGame}>
+            <button className="button button-stop" type="button" onClick={stopGame}>
               Stoppa
             </button>
           ) : (
-            <button className="button" type="button" onClick={startGame}>
+            <button className="button button-start" type="button" onClick={startGame}>
               {session.phase === 'done' ? 'Kör igen' : 'Starta'}
             </button>
           )}

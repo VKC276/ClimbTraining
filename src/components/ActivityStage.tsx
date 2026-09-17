@@ -97,7 +97,7 @@ export function ActivityStage({
           <Link className="button button-ghost" to="/">
             Tillbaka till menyn
           </Link>
-          <button className="button" type="button" onClick={onEnd}>
+          <button className="button button-stop" type="button" onClick={onEnd}>
             Avsluta
           </button>
         </footer>

@@ -209,14 +209,14 @@ export function TimerPanel({ variant }: TimerPanelProps) {
           {running ? (
             <>
               <button
-                className="button"
+                className="button button-pause"
                 type="button"
                 onClick={() => setTimerSession(pauseTimer(session))}
               >
                 Pausa
               </button>
               <button
-                className="button button-ghost"
+                className="button button-stop"
                 type="button"
                 onClick={() => setTimerSession({ ...idleTimerSession })}
               >
@@ -226,14 +226,14 @@ export function TimerPanel({ variant }: TimerPanelProps) {
           ) : paused ? (
             <>
               <button
-                className="button"
+                className="button button-start"
                 type="button"
                 onClick={() => setTimerSession(resumeTimer(session))}
               >
                 Fortsätt
               </button>
               <button
-                className="button button-ghost"
+                className="button button-stop"
                 type="button"
                 onClick={() => setTimerSession({ ...idleTimerSession })}
               >
@@ -241,7 +241,7 @@ export function TimerPanel({ variant }: TimerPanelProps) {
               </button>
             </>
           ) : (
-            <button className="button" type="button" onClick={startGame}>
+            <button className="button button-start" type="button" onClick={startGame}>
               {session.phase === 'done' ? 'Kör igen' : 'Starta'}
             </button>
           )}

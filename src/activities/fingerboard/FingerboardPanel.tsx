@@ -227,14 +227,14 @@ export function FingerboardPanel({ variant }: FingerboardPanelProps) {
         <div className="density-controls">
           {running ? (
             <button
-              className="button"
+              className="button button-stop"
               type="button"
               onClick={() => setFingerboardSession({ ...idleFingerboardSession })}
             >
               Stoppa
             </button>
           ) : (
-            <button className="button" type="button" onClick={startGame}>
+            <button className="button button-start" type="button" onClick={startGame}>
               {session.phase === 'done' ? 'Kör igen' : 'Starta'}
             </button>
           )}

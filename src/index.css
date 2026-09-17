@@ -116,6 +116,24 @@ a {
   color: var(--chalk);
 }
 
+.button-start {
+  background: var(--logo);
+  border-color: transparent;
+  color: #04150a;
+}
+
+.button-pause {
+  background: #eab308;
+  border-color: transparent;
+  color: #1a1404;
+}
+
+.button-stop {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff4f2;
+}
+
 .display-page {
   min-height: 100svh;
   padding: 2rem;
@@ -134,7 +152,8 @@ html.display-no-cursor *,
 .display-sync-badge {
   position: fixed;
   top: 0.75rem;
-  left: 0.75rem;
+  right: 0.75rem;
+  left: auto;
   z-index: 20;
   margin: 0;
   padding: 0.2rem 0.55rem;
@@ -1320,6 +1339,7 @@ html.display-no-cursor *,
 }
 
 .trainer-page {
+  position: relative;
   width: min(1080px, calc(100% - 2rem));
   max-width: 100%;
   min-width: 0;
@@ -1395,7 +1415,11 @@ html.display-no-cursor *,
 }
 
 .sync-badge {
-  margin: 0.35rem 0 0;
+  position: absolute;
+  top: 1.15rem;
+  right: 0;
+  z-index: 6;
+  margin: 0;
   width: fit-content;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
