@@ -6,9 +6,11 @@ from __future__ import annotations
 import glob
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
+import termios
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,11 +25,6 @@ try:
 except ImportError:
     PresenceDetector = None
     parse_csi_line = None
-
-try:
-    import serial
-except ImportError:
-    serial = None
 
 HOST = "127.0.0.1"
 PORT = 8743
@@ -272,7 +269,7 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLastLine": PRESENCE["lastLine"],
                     "csiLines": PRESENCE["lines"],
                     "csiOkLines": PRESENCE["csiLines"],
-                    "csiHelper": "csi-3",
+                    "csiHelper": "csi-4",
                 }
             )
         self.wfile.write(body.encode())
@@ -425,10 +422,28 @@ def csi_plugged() -> bool:
     return bool(serial_candidates())
 
 
-def open_csi_serial(port: str):
-    ser = serial.Serial(port=port, baudrate=115200, timeout=0.5)
-    time.sleep(0.3)
-    return ser
+def open_csi_serial(port: str) -> int:
+    """Öppna USB-UART som `stty raw` + `cat`, utan DTR-reset."""
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    attrs = termios.tcgetattr(fd)
+    attrs[0] = 0
+    attrs[1] = 0
+    attrs[3] = 0
+    attrs[2] |= termios.CLOCAL | termios.CREAD | termios.CS8
+    attrs[2] &= ~(
+        termios.PARENB
+        | termios.CSTOPB
+        | termios.CRTSCTS
+        | termios.HUPCL
+        | termios.CSIZE
+    )
+    attrs[2] |= termios.CS8
+    attrs[4] = termios.B115200
+    attrs[5] = termios.B115200
+    attrs[6][termios.VMIN] = 0
+    attrs[6][termios.VTIME] = 0
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    return fd
 
 
 def request_hdmi(on: bool, reason: str) -> None:
@@ -452,8 +467,8 @@ def request_hdmi(on: bool, reason: str) -> None:
 
 
 def presence_loop() -> None:
-    if serial is None or parse_csi_line is None or PresenceDetector is None:
-        log("CSI-sensor hoppas över (python3-serial eller presence_monitor saknas)")
+    if parse_csi_line is None or PresenceDetector is None:
+        log("CSI-sensor hoppas över (presence_monitor saknas)")
         return
     last_logged = None
     seen_since = 0.0
@@ -463,8 +478,9 @@ def presence_loop() -> None:
             time.sleep(3)
             continue
         port = ports[0]
+        fd = None
         try:
-            ser = open_csi_serial(port)
+            fd = open_csi_serial(port)
         except OSError as error:
             log(f"CSI-port {port}: {error}")
             time.sleep(3)
@@ -486,8 +502,16 @@ def presence_loop() -> None:
                 with LOCK:
                     detector.motion_threshold = float(STATE.get("csiThreshold") or 3.0)
                     detector.hold_seconds = float(STATE.get("csiHoldSeconds") or 600)
-                waiting = ser.in_waiting
-                chunk = ser.read(waiting or 1)
+                ready, _, _ = select.select([fd], [], [], 0.5)
+                if not ready:
+                    if int(PRESENCE["lines"]) == 0 and time.time() - silent_since > 8:
+                        log("CSI-usb tyst efter 8 s")
+                        silent_since = time.time()
+                    continue
+                try:
+                    chunk = os.read(fd, 4096)
+                except BlockingIOError:
+                    continue
                 if not chunk:
                     if int(PRESENCE["lines"]) == 0 and time.time() - silent_since > 8:
                         log("CSI-usb tyst efter 8 s")
@@ -528,13 +552,14 @@ def presence_loop() -> None:
                         request_hdmi(True, "csi")
                     elif not present:
                         request_hdmi(False, "csi")
-        except (OSError, serial.SerialException) as error:
+        except OSError as error:
             log(f"CSI-port tappad: {error}")
         finally:
-            try:
-                ser.close()
-            except OSError:
-                pass
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
             PRESENCE["live_until"] = 0.0
             PRESENCE["present"] = False
             PRESENCE["motion"] = False
