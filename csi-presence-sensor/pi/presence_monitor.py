@@ -30,7 +30,7 @@ except ImportError:
 
 # Matchar formatet som app_main.c skriver ut:
 # CSI_DATA,<timestamp>,<mac>,...,<len>,[<raw csi-värden separerade med mellanslag>]
-CSI_LINE_RE = re.compile(r'^CSI_DATA,.*\[(?P<csi>[^\]]*)\]\s*$')
+CSI_LINE_RE = re.compile(r'CSI_DATA,.*\[(?P<csi>[^\]]*)\]')
 
 
 def parse_csi_line(line):

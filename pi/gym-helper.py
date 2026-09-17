@@ -55,6 +55,9 @@ PRESENCE = {
     "stdev": 0.0,
     "ignore_on_until": 0.0,
     "port": "",
+    "lastLine": "",
+    "lines": 0,
+    "csiLines": 0,
 }
 CSI_ON_HOLD = 8.0
 MANUAL_OFF_HOLD = 180.0
@@ -266,6 +269,9 @@ class Handler(BaseHTTPRequestHandler):
                     "csiLive": presence_live(),
                     "csiMotion": PRESENCE["motion"],
                     "csiStdev": round(float(PRESENCE["stdev"]), 1),
+                    "csiLastLine": PRESENCE["lastLine"],
+                    "csiLines": PRESENCE["lines"],
+                    "csiOkLines": PRESENCE["csiLines"],
                 }
             )
         self.wfile.write(body.encode())
@@ -457,48 +463,69 @@ def presence_loop() -> None:
             ser.timeout = 1
             ser.dsrdtr = False
             ser.rtscts = False
+            ser.dtr = False
+            ser.rts = False
             ser.open()
+            ser.dtr = False
+            ser.rts = False
+            time.sleep(1.5)
+            ser.reset_input_buffer()
         except OSError as error:
             log(f"CSI-port {port}: {error}")
             time.sleep(3)
             continue
         PRESENCE["port"] = port
+        PRESENCE["lastLine"] = ""
+        PRESENCE["lines"] = 0
+        PRESENCE["csiLines"] = 0
         detector = PresenceDetector(
             window_size=20,
             motion_threshold=float(STATE.get("csiThreshold") or 3.0),
             hold_seconds=float(STATE.get("csiHoldSeconds") or 600),
         )
         log(f"CSI-sensor på {port}")
+        pending = ""
         try:
             while True:
                 with LOCK:
                     detector.motion_threshold = float(STATE.get("csiThreshold") or 3.0)
                     detector.hold_seconds = float(STATE.get("csiHoldSeconds") or 600)
-                raw = ser.readline()
-                if not raw:
+                waiting = ser.in_waiting
+                chunk = ser.read(waiting or 1)
+                if not chunk:
                     continue
-                amplitudes = parse_csi_line(raw.decode("utf-8", errors="ignore"))
-                if amplitudes is None:
-                    continue
-                PRESENCE["live_until"] = time.time() + 8
-                motion_now = detector.feed(amplitudes)
-                present = bool(detector.presence)
-                PRESENCE["present"] = present
-                PRESENCE["motion"] = bool(motion_now)
-                PRESENCE["stdev"] = float(getattr(detector, "last_stdev", 0.0))
-                now = time.time()
-                if present:
-                    if seen_since == 0.0:
-                        seen_since = now
-                else:
-                    seen_since = 0.0
-                if present != last_logged:
-                    log(f"CSI {'närvaro' if present else 'tomt'}")
-                    last_logged = present
-                if present and now - seen_since >= CSI_ON_HOLD:
-                    request_hdmi(True, "csi")
-                elif not present:
-                    request_hdmi(False, "csi")
+                pending += chunk.decode("utf-8", errors="ignore")
+                pending = pending.replace("\r\n", "\n").replace("\r", "\n")
+                while "\n" in pending:
+                    line, pending = pending.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    PRESENCE["lines"] = int(PRESENCE["lines"]) + 1
+                    PRESENCE["lastLine"] = line[:180]
+                    amplitudes = parse_csi_line(line)
+                    if amplitudes is None:
+                        continue
+                    PRESENCE["csiLines"] = int(PRESENCE["csiLines"]) + 1
+                    PRESENCE["live_until"] = time.time() + 8
+                    motion_now = detector.feed(amplitudes)
+                    present = bool(detector.presence)
+                    PRESENCE["present"] = present
+                    PRESENCE["motion"] = bool(motion_now)
+                    PRESENCE["stdev"] = float(getattr(detector, "last_stdev", 0.0))
+                    now = time.time()
+                    if present:
+                        if seen_since == 0.0:
+                            seen_since = now
+                    else:
+                        seen_since = 0.0
+                    if present != last_logged:
+                        log(f"CSI {'närvaro' if present else 'tomt'}")
+                        last_logged = present
+                    if present and now - seen_since >= CSI_ON_HOLD:
+                        request_hdmi(True, "csi")
+                    elif not present:
+                        request_hdmi(False, "csi")
         except (OSError, serial.SerialException) as error:
             log(f"CSI-port tappad: {error}")
         finally:
@@ -511,6 +538,7 @@ def presence_loop() -> None:
             PRESENCE["motion"] = False
             PRESENCE["stdev"] = 0.0
             PRESENCE["port"] = ""
+            PRESENCE["lastLine"] = ""
             last_logged = None
             seen_since = 0.0
             time.sleep(2)

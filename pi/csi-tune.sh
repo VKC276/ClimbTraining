@@ -68,8 +68,14 @@ def status_line(state: dict) -> str:
     threshold = float(state.get("csiThreshold") or 3)
     hold = int(float(state.get("csiHoldSeconds") or 600))
     gap = threshold - stdev
-    if not live:
-        room = "ingen sensor"
+    last = str(state.get("csiLastLine") or "").strip()
+    lines = int(state.get("csiLines") or 0)
+    ok_lines = int(state.get("csiOkLines") or 0)
+    port = state.get("csiPort") or "—"
+    if not state.get("csiPort"):
+        room = "ingen USB"
+    elif not live:
+        room = "USB tyst"
     elif motion:
         room = "RÖRELSE"
     elif present:
@@ -77,18 +83,21 @@ def status_line(state: dict) -> str:
     else:
         room = "tomt"
     if not live:
-        relative = "—"
+        if last:
+            relative = f"ingen CSI_DATA än — senast: {last}"
+        else:
+            relative = "ingen CSI_DATA än (flasha om ESP32 och kolla WiFi)"
     elif gap > 0:
         relative = f"{gap:.1f} under tröskel ({stdev / threshold * 100:.0f} %)"
     elif gap == 0:
         relative = "på tröskeln"
     else:
         relative = f"{abs(gap):.1f} över tröskel ({stdev / threshold * 100:.0f} %)"
-    port = state.get("csiPort") or "—"
     return (
         f"sensor {room:16}  port {port}\n"
         f"signal {stdev:5.1f}  [{bar(stdev, threshold)}]  tröskel {threshold:.1f}\n"
         f"läge   {relative}\n"
+        f"usb    {lines} rader, {ok_lines} CSI\n"
         f"håll   {hold} s efter senaste rörelse  "
         f"TV {'på' if state.get('hdmiOn') else 'av'}"
     )
