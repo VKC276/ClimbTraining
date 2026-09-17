@@ -1,10 +1,6 @@
 export type HdmiCommand = 'on' | 'off'
-export type VolumeCommand = 'up' | 'down'
 
 export type DisplayHardware = {
-  volume: number
-  volumeCommand: VolumeCommand | null
-  volumeCommandId: number
   hdmiOn: boolean
   hdmiCommand: HdmiCommand | null
   hdmiCommandId: number
@@ -14,9 +10,6 @@ export type DisplayHardware = {
 }
 
 export const defaultDisplayHardware: DisplayHardware = {
-  volume: 80,
-  volumeCommand: null,
-  volumeCommandId: 0,
   hdmiOn: true,
   hdmiCommand: null,
   hdmiCommandId: 0,
@@ -26,10 +19,6 @@ export const defaultDisplayHardware: DisplayHardware = {
 }
 
 export const PI_HELPER_URL = 'http://127.0.0.1:8743'
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
 
 export function isClockTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)
@@ -44,12 +33,6 @@ export function normalizeDisplayHardware(
   partial?: Partial<DisplayHardware>,
 ): DisplayHardware {
   return {
-    volume: clamp(Math.round(Number(partial?.volume ?? defaultDisplayHardware.volume)), 0, 100),
-    volumeCommand:
-      partial?.volumeCommand === 'up' || partial?.volumeCommand === 'down'
-        ? partial.volumeCommand
-        : null,
-    volumeCommandId: Math.max(0, Math.round(Number(partial?.volumeCommandId ?? 0) || 0)),
     hdmiOn: partial?.hdmiOn !== false,
     hdmiCommand:
       partial?.hdmiCommand === 'on' || partial?.hdmiCommand === 'off'

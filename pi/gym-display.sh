@@ -38,10 +38,14 @@ sleep 4
 
 if command -v pactl >/dev/null; then
   SINK="$(pactl list short sinks 2>/dev/null | awk 'tolower($0) ~ /hdmi/ { print $2; exit }')"
-  if [[ -n "${SINK:-}" ]]; then
-    pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
-    pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-  fi
+  SINK="${SINK:-@DEFAULT_SINK@}"
+  pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
+  pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+  pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
+fi
+if command -v wpctl >/dev/null; then
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
 fi
 
 if ! pgrep -f "gym-helper.py" >/dev/null; then

@@ -221,14 +221,6 @@ export function SettingsPage() {
 
         <fieldset>
           <legend>Gymskärm</legend>
-          <LockedSlider
-            label="Volym"
-            value={displayHardware.volume}
-            min={0}
-            max={100}
-            step={1}
-            onChange={(volume) => patchHardware({ volume })}
-          />
           <div className="hdmi-toggle">
             <button
               className={hdmiPressed === 'on' ? 'button' : 'button-ghost'}

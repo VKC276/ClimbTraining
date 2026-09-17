@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import threading
@@ -19,15 +18,10 @@ STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
 SPEAK_LOCK = threading.Lock()
-VOLUME_GATE = threading.Lock()
 SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
 SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
-LAST_TV_VOLUME_AT = 0.0
 STATE = {
-    "volume": 80,
-    "volumeCommand": None,
-    "volumeCommandId": 0,
     "hdmiOn": True,
     "hdmiCommand": None,
     "hdmiCommandId": 0,
@@ -107,6 +101,7 @@ def play_color_file(color_id: str) -> bool:
 
 def speak_text(text: str, color_id: str = "") -> None:
     with SPEAK_LOCK:
+        unmute_pi_hdmi()
         if color_id and play_color_file(color_id):
             return
         cleaned = "".join(ch for ch in str(text) if ch.isalnum() or ch in " !-åäöÅÄÖ")
@@ -119,7 +114,7 @@ def speak_text(text: str, color_id: str = "") -> None:
             return
         try:
             subprocess.run(
-                [binary, "-v", "sv", "-s", "125", "-a", "180", "-g", "8", cleaned],
+                [binary, "-v", "sv", "-s", "125", "-a", "200", "-g", "8", cleaned],
                 check=False,
                 capture_output=True,
                 timeout=8,
@@ -130,103 +125,13 @@ def speak_text(text: str, color_id: str = "") -> None:
         log(f"tal `{cleaned}`")
 
 
-def parse_audio_status(text: str) -> int | None:
-    match = re.search(
-        r"(?:audio status|volume up|volume down):\s*([0-9a-f]{1,2})",
-        text,
-        re.I,
-    )
-    if not match:
-        match = re.search(r"\b7a:([0-9a-f]{2})\b", text, re.I)
-    if not match:
-        return None
-    raw = int(match.group(1), 16)
-    if raw == 0x7F:
-        return None
-    if raw & 0x80:
-        return 0
-    return max(0, min(100, raw & 0x7F))
-
-
-def read_tv_volume() -> int | None:
-    text = send_cec_command("gas")
-    value = parse_audio_status(text)
-    if value is not None:
-        return value
-    text = send_cec_command("tx 40:71")
-    return parse_audio_status(text)
-
-
-def refresh_tv_volume(force: bool = False) -> None:
-    global LAST_TV_VOLUME_AT
-    now = time.time()
-    if not force and now - LAST_TV_VOLUME_AT < 5:
-        return
-    if VOLUME_GATE.locked():
-        return
-    LAST_TV_VOLUME_AT = now
-    value = read_tv_volume()
-    if value is None:
-        return
-    with LOCK:
-        STATE["volume"] = value
-        save_state()
-    log(f"TV-volym {value}")
-
-
 def send_power(on: bool) -> None:
     if on:
         send_cec_command(f"on {TV_ADDRESS}")
         send_cec_command("as")
+        unmute_pi_hdmi()
         return
     send_cec_command(f"standby {TV_ADDRESS}")
-
-
-def send_volume_step(up: bool) -> None:
-    send_cec_command("volup" if up else "voldown")
-
-
-def send_volume_burst(up: bool, steps: int = 5) -> None:
-    if not VOLUME_GATE.acquire(blocking=False):
-        log("volym hoppas över")
-        return
-    try:
-        command = "volup" if up else "voldown"
-        send_cec_command("\n".join([command] * max(1, steps)), timeout=6)
-    finally:
-        VOLUME_GATE.release()
-
-
-def apply_volume(target: int, previous: int) -> None:
-    target = max(0, min(100, int(target)))
-    actual = read_tv_volume()
-    if actual is not None:
-        previous = actual
-    previous = int(previous)
-    if target == 0:
-        send_cec_command("mute")
-        synced = read_tv_volume()
-        if synced is not None:
-            with LOCK:
-                STATE["volume"] = synced
-                save_state()
-        return
-    delta = target - previous
-    if delta == 0:
-        if actual is not None:
-            with LOCK:
-                STATE["volume"] = actual
-                save_state()
-        return
-    steps = min(25, max(1, abs(delta)))
-    command = "volup" if delta > 0 else "voldown"
-    send_cec_command("\n".join([command] * steps), timeout=min(18, 5 + steps * 0.25))
-    time.sleep(0.25)
-    synced = read_tv_volume()
-    if synced is not None:
-        with LOCK:
-            STATE["volume"] = synced
-            save_state()
 
 
 def hdmi_sink() -> str:
@@ -243,12 +148,17 @@ def hdmi_sink() -> str:
 
 def unmute_pi_hdmi() -> None:
     pactl = shutil.which("pactl")
-    if not pactl:
-        return
-    sink = hdmi_sink()
-    run([pactl, "set-default-sink", sink])
-    run([pactl, "set-sink-mute", sink, "0"])
-    run([pactl, "set-sink-volume", sink, "100%"])
+    if pactl:
+        sink = hdmi_sink()
+        run([pactl, "set-default-sink", sink])
+        run([pactl, "set-sink-mute", sink, "0"])
+        run([pactl, "set-sink-volume", sink, "100%"])
+        run([pactl, "set-sink-mute", "@DEFAULT_SINK@", "0"])
+        run([pactl, "set-sink-volume", "@DEFAULT_SINK@", "100%"])
+    wpctl = shutil.which("wpctl")
+    if wpctl:
+        run([wpctl, "set-mute", "@DEFAULT_AUDIO_SINK@", "0"])
+        run([wpctl, "set-volume", "@DEFAULT_AUDIO_SINK@", "1.0"])
 
 
 def save_state() -> None:
@@ -276,19 +186,6 @@ def apply_change(previous: dict, current: dict) -> None:
         send_power(command == "on")
     elif bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
         send_power(bool(current.get("hdmiOn")))
-    volume_id = int(current.get("volumeCommandId") or 0)
-    previous_volume_id = int(previous.get("volumeCommandId") or 0)
-    volume_command = current.get("volumeCommand")
-    if volume_id != previous_volume_id and volume_command in ("up", "down"):
-        send_volume_burst(volume_command == "up")
-    elif int(previous.get("volume", 0)) != int(current.get("volume", 0)):
-        if not VOLUME_GATE.acquire(blocking=False):
-            log("volym hoppas över")
-            return
-        try:
-            apply_volume(int(current["volume"]), int(previous["volume"]))
-        finally:
-            VOLUME_GATE.release()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -311,7 +208,6 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        refresh_tv_volume()
         self.send_response(200)
         self._cors()
         self.send_header("Content-Type", "application/json")
@@ -336,9 +232,6 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             previous = dict(STATE)
             for key in (
-                "volume",
-                "volumeCommand",
-                "volumeCommandId",
                 "hdmiOn",
                 "hdmiCommand",
                 "hdmiCommandId",
