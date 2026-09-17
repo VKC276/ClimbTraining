@@ -13,6 +13,35 @@ log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
 }
 
+max_pi_audio() {
+  if command -v pactl >/dev/null; then
+    SINK="$(pactl list short sinks 2>/dev/null | awk 'tolower($0) ~ /hdmi/ { print $2; exit }')"
+    SINK="${SINK:-@DEFAULT_SINK@}"
+    pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
+    pactl list short sinks 2>/dev/null | awk '{ print $2 }' | while read -r name; do
+      [[ -z "$name" ]] && continue
+      pactl set-sink-mute "$name" 0 >/dev/null 2>&1 || true
+      pactl set-sink-volume "$name" 100% >/dev/null 2>&1 || true
+    done
+    pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+    pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
+    pactl list short sink-inputs 2>/dev/null | awk '{ print $1 }' | while read -r id; do
+      [[ -z "$id" ]] && continue
+      pactl set-sink-input-mute "$id" 0 >/dev/null 2>&1 || true
+      pactl set-sink-input-volume "$id" 100% >/dev/null 2>&1 || true
+    done
+  fi
+  if command -v wpctl >/dev/null; then
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+    wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
+  fi
+  if command -v amixer >/dev/null; then
+    for control in HDMI PCM Master Digital; do
+      amixer -q sset "$control" 100% unmute >/dev/null 2>&1 || true
+    done
+  fi
+}
+
 LOCK="${HOME}/.vvk-gym-display.lock"
 exec 9>"$LOCK"
 if ! flock -n 9; then
@@ -35,18 +64,7 @@ fi
 
 log "startar gymskärm"
 sleep 4
-
-if command -v pactl >/dev/null; then
-  SINK="$(pactl list short sinks 2>/dev/null | awk 'tolower($0) ~ /hdmi/ { print $2; exit }')"
-  SINK="${SINK:-@DEFAULT_SINK@}"
-  pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
-  pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-  pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
-fi
-if command -v wpctl >/dev/null; then
-  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
-fi
+max_pi_audio
 
 if ! pgrep -f "gym-helper.py" >/dev/null; then
   python3 "$HELPER" >>"$LOG" 2>&1 &
@@ -100,5 +118,6 @@ CHROME_PID=$!
 sleep 2
 python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
 (sleep 6; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
+(sleep 3; max_pi_audio) &
 
 wait "$CHROME_PID"

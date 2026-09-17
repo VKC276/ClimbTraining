@@ -20,6 +20,7 @@ async function playColorFile(id: CatchHoldColorId) {
       try {
         const audio = new Audio(objectUrl)
         audio.preload = 'auto'
+        audio.volume = 1
         await audio.play()
         await new Promise<void>((resolve, reject) => {
           audio.addEventListener('ended', () => resolve(), { once: true })
