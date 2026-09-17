@@ -1388,6 +1388,13 @@ html.display-no-cursor *,
   margin-bottom: 2rem;
 }
 
+.trainer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
 .activity-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
