@@ -1860,7 +1860,8 @@ select,
   min-height: 42vh;
   padding: 1.4rem 1.5rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: #1c1b19;
+  color: var(--chalk);
   overflow: hidden;
   text-align: center;
 }
@@ -1870,23 +1871,8 @@ select,
   min-height: 0;
 }
 
-.timer-running .timer-stage {
-  background: #1e3a8a;
-  color: #dbeafe;
-}
-
-.timer-paused .timer-stage {
-  background: #334155;
-  color: #e2e8f0;
-}
-
 .timer-warn .timer-clock {
   color: #ef4444;
-}
-
-.timer-done .timer-stage {
-  background: #9a3412;
-  color: #fff7ed;
 }
 
 .timer-live {
