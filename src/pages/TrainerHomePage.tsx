@@ -5,7 +5,7 @@ import { TrainerCorner } from '../components/TrainerCorner'
 import { useGym } from '../gym/GymContext'
 
 export function TrainerHomePage() {
-  const { startActivity } = useGym()
+  const { startActivity, unpairScreen } = useGym()
 
   return (
     <main className="trainer-page">
@@ -37,9 +37,9 @@ export function TrainerHomePage() {
         <Link className="button button-ghost" to="/installningar">
           Inställningar
         </Link>
-        <Link className="button button-ghost" to="/display">
-          Öppna gymskärm
-        </Link>
+        <button className="button button-ghost" type="button" onClick={unpairScreen}>
+          Byt skärm
+        </button>
       </footer>
     </main>
   )
