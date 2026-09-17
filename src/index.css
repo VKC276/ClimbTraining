@@ -2,6 +2,7 @@
   --bg: #12110f;
   --bg-elev: #1c1a17;
   --bg-card: #24211c;
+  --stage: #1c1b19;
   --chalk: #f4efe6;
   --muted: #a39e94;
   --hold: #e85d04;
@@ -459,7 +460,8 @@ html.display-no-cursor *,
   min-height: 42vh;
   padding: 2.5rem 1.25rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   text-align: center;
 }
 
@@ -547,28 +549,14 @@ html.display-no-cursor *,
   min-height: 48vh;
   padding: 1.5rem 1.6rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   overflow: hidden;
 }
 
 .density-display .density-stage {
   height: 100%;
   min-height: 0;
-}
-
-.density-work .density-stage {
-  background: #c2410c;
-  color: #fff7ed;
-}
-
-.density-rest .density-stage {
-  background: #155e75;
-  color: #ecfeff;
-}
-
-.density-done .density-stage {
-  background: #14532d;
-  color: #dcfce7;
 }
 
 .density-fit {
@@ -691,18 +679,14 @@ html.display-no-cursor *,
   min-height: 48vh;
   padding: 1.5rem 1.6rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   overflow: hidden;
 }
 
 .stations-display .stations-stage {
   height: 100%;
   min-height: 0;
-}
-
-.stations-running .stations-stage {
-  background: #312e81;
-  color: #eef2ff;
 }
 
 .stations-live,
@@ -869,14 +853,15 @@ html.display-no-cursor *,
   min-height: 42vh;
   padding: 1.5rem 1.6rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   overflow: hidden;
 }
 
 .tech-focus-display .tech-focus-stage {
   height: 100%;
   min-height: 0;
-  background: #1c1b19;
+  background: var(--stage);
   color: var(--chalk);
   place-items: stretch;
 }
@@ -1023,53 +1008,14 @@ html.display-no-cursor *,
   min-height: 48vh;
   padding: 1.5rem 1.6rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   overflow: hidden;
 }
 
 .emom-display .emom-stage {
   height: 100%;
   min-height: 0;
-  background: #14532d;
-  color: #dcfce7;
-}
-
-.emom-running.emom-rest .emom-stage {
-  background: #155e75;
-  color: #ecfeff;
-}
-
-.emom-warn .emom-stage {
-  background: #c2410c;
-  color: #fff7ed;
-  animation: emom-warn-pulse 0.7s ease-in-out infinite;
-}
-
-.emom-go .emom-stage {
-  animation: emom-go-flash 1.05s ease;
-}
-
-.emom-done .emom-stage {
-  background: #14532d;
-  color: #dcfce7;
-}
-
-@keyframes emom-warn-pulse {
-  0%,
-  100% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.25);
-  }
-}
-
-@keyframes emom-go-flash {
-  0%,
-  40% {
-    background: #f8fafc;
-    color: #111827;
-  }
 }
 
 .emom-live {
@@ -1206,8 +1152,8 @@ html.display-no-cursor *,
   min-height: 48vh;
   border-radius: 24px;
   overflow: hidden;
-  background: #1c1008;
-  color: #fff7ed;
+  background: var(--stage);
+  color: var(--chalk);
 }
 
 .choose-display .choose-stage {
@@ -1710,7 +1656,8 @@ select,
   min-height: 42vh;
   padding: 1.4rem 1.5rem;
   border-radius: 24px;
-  background: var(--bg-elev);
+  background: var(--stage);
+  color: var(--chalk);
   overflow: hidden;
   text-align: center;
 }
@@ -1718,21 +1665,6 @@ select,
 .finger-display .finger-stage {
   height: 100%;
   min-height: 0;
-}
-
-.finger-hang .finger-stage {
-  background: #166534;
-  color: #ecfdf5;
-}
-
-.finger-rest .finger-stage {
-  background: #155e75;
-  color: #ecfeff;
-}
-
-.finger-done .finger-stage {
-  background: #14532d;
-  color: #dcfce7;
 }
 
 .finger-live {
@@ -1860,7 +1792,7 @@ select,
   min-height: 42vh;
   padding: 1.4rem 1.5rem;
   border-radius: 24px;
-  background: #1c1b19;
+  background: var(--stage);
   color: var(--chalk);
   overflow: hidden;
   text-align: center;
