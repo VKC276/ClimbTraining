@@ -188,11 +188,38 @@ def main() -> None:
             fullscreen = True
             break
         if window_id is not None:
+            if state in ("minimized", "minimised", ""):
+                cdp_call(
+                    browser,
+                    call_id,
+                    "Browser.setWindowBounds",
+                    {
+                        "windowId": window_id,
+                        "bounds": {
+                            "windowState": "normal",
+                            "left": 0,
+                            "top": 0,
+                            "width": 1920,
+                            "height": 1080,
+                        },
+                    },
+                )
+                call_id += 1
+                time.sleep(0.3)
             cdp_call(
                 browser,
                 call_id,
                 "Browser.setWindowBounds",
-                {"windowId": window_id, "bounds": {"windowState": "fullscreen"}},
+                {
+                    "windowId": window_id,
+                    "bounds": {
+                        "windowState": "fullscreen",
+                        "left": 0,
+                        "top": 0,
+                        "width": 1920,
+                        "height": 1080,
+                    },
+                },
             )
             call_id += 1
         send_f11(page, call_id)

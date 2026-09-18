@@ -47,12 +47,43 @@ from pathlib import Path
 import re
 
 home = Path.home() / ".config/labwc/rc.xml"
+src = Path("/etc/xdg/labwc/rc.xml")
+home.parent.mkdir(parents=True, exist_ok=True)
+if not home.exists() and src.exists():
+    home.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 if not home.exists():
-    raise SystemExit(0)
+    home.write_text('<?xml version="1.0"?>\n<labwc_config>\n</labwc_config>\n', encoding="utf-8")
 text = home.read_text(encoding="utf-8")
-new = re.sub(r'\s*<keybind key="A-W-h">[\s\S]*?</keybind>', "", text)
-if new != text:
-    home.write_text(new, encoding="utf-8")
+text = re.sub(r'\s*<keybind key="A-W-h">[\s\S]*?</keybind>', "", text)
+start = "<!-- VVK gymskärm -->"
+end = "<!-- /VVK gymskärm -->"
+if start in text and end in text:
+    text = text[: text.find(start)] + text[text.find(end) + len(end) :]
+block = f"""{start}
+    <windowRule identifier="vvk-gym" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
+      <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
+    </windowRule>
+    <windowRule identifier="chromium*" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
+      <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
+    </windowRule>
+    <windowRule identifier="Chromium*" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
+      <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
+    </windowRule>
+    {end}"""
+if "<windowRules>" in text:
+    text = text.replace("<windowRules>", "<windowRules>\n    " + block, 1)
+elif "</labwc_config>" in text:
+    text = text.replace(
+        "</labwc_config>",
+        "  <windowRules>\n    " + block + "\n  </windowRules>\n</labwc_config>",
+        1,
+    )
+else:
+    text += "\n<windowRules>\n    " + block + "\n</windowRules>\n"
+home.write_text(text, encoding="utf-8")
 PY
 
 echo "Autostart är installerad för $(whoami)."

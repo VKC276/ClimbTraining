@@ -18,7 +18,12 @@ sudo_run() {
 }
 
 echo "Installerar gymskärmen..."
+export DEBIAN_FRONTEND=noninteractive
 sudo_run apt-get update -y
+sudo_run apt-get \
+  -o Dpkg::Options::=--force-confdef \
+  -o Dpkg::Options::=--force-confold \
+  full-upgrade -y
 sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr
 if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
   sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
