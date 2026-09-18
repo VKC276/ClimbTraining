@@ -1909,7 +1909,7 @@ select,
 .double-rule-board {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 1.2rem;
   min-height: 0;
   height: 100%;
 }
@@ -1917,11 +1917,11 @@ select,
 .double-rule-card {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 0.7rem;
+  gap: 0.8rem;
   min-height: 0;
-  padding: 1.15rem 1.25rem;
+  padding: 1.4rem 1.6rem 1.6rem;
   border: 2px solid rgba(253, 230, 138, 0.45);
-  border-radius: 22px;
+  border-radius: 28px;
   background: rgba(28, 16, 8, 0.55);
 }
 
@@ -1931,47 +1931,79 @@ select,
 
 .double-rule-fresh {
   border-color: rgba(253, 230, 138, 0.95);
-  box-shadow: 0 0 0 2px rgba(253, 230, 138, 0.18);
+  box-shadow: 0 0 0 3px rgba(253, 230, 138, 0.18);
 }
 
 .double-rule-cat {
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  font-size: clamp(1rem, 2vw, 1.6rem);
+  font-weight: 700;
   opacity: 0.8;
 }
 
 .double-rule-fit {
   min-height: 0;
+  height: 100%;
 }
 
-.double-rule-card h2 {
+.double-rule-fit .fit-scale-inner {
+  width: 100%;
+}
+
+.double-rule-title {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(1.5rem, 4.4vw, 3.2rem);
-  line-height: 1.08;
+  font-weight: 700;
+  font-size: calc(var(--fit, 1) * 4.2rem);
+  line-height: 0.95;
+  text-wrap: balance;
 }
 
-.double-rule-card p {
-  margin: 0.45rem 0 0;
-  font-size: clamp(1rem, 2.2vw, 1.45rem);
-  line-height: 1.35;
+.double-rule-text {
+  margin: 0.5em 0 0;
+  font-size: calc(var(--fit, 1) * 2rem);
+  line-height: 1.22;
+}
+
+.double-rule-spin-center {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  text-align: center;
+}
+
+.double-rule-spin-center .double-rule-title {
+  font-size: clamp(2.4rem, 7vw, 6.4rem);
+  max-width: 12ch;
+}
+
+.double-rule-spinning .double-rule-spin-center .double-rule-title {
+  animation: tech-tick 0.16s ease;
+}
+
+.double-rule-fresh .double-rule-fit .double-rule-title,
+.double-rule-fresh .double-rule-fit .double-rule-text {
+  animation: tech-land 0.45s ease;
 }
 
 .double-rule-wait {
   margin: auto 0;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
   opacity: 0.75;
+}
+
+.double-rule-display {
+  height: 100%;
 }
 
 .double-rule-display .double-rule-board {
   height: 100%;
 }
 
-.double-rule-trainer .double-rule-board {
-  min-height: 16rem;
+.double-rule-trainer {
   height: auto;
 }
 

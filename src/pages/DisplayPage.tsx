@@ -66,7 +66,8 @@ export function DisplayPage() {
             activity.id === 'emom' ||
             activity.id === 'choose-path' ||
             activity.id === 'fingerboard' ||
-            activity.id === 'timer'
+            activity.id === 'timer' ||
+            activity.id === 'dubbelregeln'
             ? 'display-page display-page-fill'
             : 'display-page'
           : 'display-page display-page-idle'

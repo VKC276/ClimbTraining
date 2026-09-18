@@ -21,6 +21,9 @@ export type DoubleRuleSession = {
   slot1: TwoCardItem | null
   slot2: TwoCardItem | null
   lastCategory: TwoCardCategory | null
+  frames: TwoCardItem[]
+  startedAt: number
+  endsAt: number
 }
 
 export const defaultBreakCards: TwoCard[] = [
@@ -201,10 +204,13 @@ export const idleDoubleRuleSession: DoubleRuleSession = {
   slot1: null,
   slot2: null,
   lastCategory: null,
+  frames: [],
+  startedAt: 0,
+  endsAt: 0,
 }
 
 export const doubleRuleIntro =
-  'Alla kort ligger i samma lek. Dra ett kort: samma kategori ersätter det aktiva kortet, den andra kategorin läggs bredvid. Bara ett Break och ett Beta syns åt gången.'
+  'Alla kort ligger i samma lek. Dra ett kort: samma kategori ersätter, den andra ligger kvar. Korten syns bara på gymskärmen.'
 
 const MAX_TITLE = 40
 const MAX_TEXT = 220
@@ -260,11 +266,18 @@ function normalizeItem(value: unknown): TwoCardItem | null {
   return { ...card, category }
 }
 
+function asTime(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
 export function normalizeDoubleRuleSession(
   partial?: Partial<DoubleRuleSession>,
 ): DoubleRuleSession {
   const remaining = Array.isArray(partial?.remaining)
     ? partial.remaining.map(normalizeItem).filter((item): item is TwoCardItem => Boolean(item))
+    : []
+  const frames = Array.isArray(partial?.frames)
+    ? partial.frames.map(normalizeItem).filter((item): item is TwoCardItem => Boolean(item))
     : []
   const last =
     partial?.lastCategory === 1 || partial?.lastCategory === 2 ? partial.lastCategory : null
@@ -273,6 +286,9 @@ export function normalizeDoubleRuleSession(
     slot1: normalizeItem(partial?.slot1),
     slot2: normalizeItem(partial?.slot2),
     lastCategory: last,
+    frames,
+    startedAt: asTime(partial?.startedAt),
+    endsAt: asTime(partial?.endsAt),
   }
 }
 
@@ -303,5 +319,74 @@ export function drawDoubleRuleCard(
     slot1: drawn.category === 1 ? drawn : session.slot1,
     slot2: drawn.category === 2 ? drawn : session.slot2,
     lastCategory: drawn.category,
+    frames: [],
+    startedAt: 0,
+    endsAt: 0,
   }
+}
+
+function cardKey(card: TwoCard) {
+  return card.title.toLowerCase()
+}
+
+export function buildSpinFrames(pool: TwoCardItem[], pick: TwoCardItem) {
+  const cards = pool.length > 0 ? pool : [pick]
+  const winner = cards.find((card) => cardKey(card) === cardKey(pick)) ?? pick
+  const count = Math.max(22, cards.length * 4)
+  const frames: TwoCardItem[] = []
+  for (let i = 0; i < count - 1; i++) {
+    const avoid = frames[i - 1]
+    const choices = avoid
+      ? cards.filter((card) => cardKey(card) !== cardKey(avoid))
+      : cards
+    const next = choices[Math.floor(Math.random() * choices.length)] ?? cards[0]
+    frames.push(next)
+  }
+  frames.push(winner)
+  return frames
+}
+
+export const SPIN_DURATION_MS = 4200
+
+export function spinIndex(startedAt: number, endsAt: number, now: number, count: number) {
+  if (count <= 1) return 0
+  const duration = Math.max(1, endsAt - startedAt)
+  const t = Math.min(1, Math.max(0, (now - startedAt) / duration))
+  const eased = 1 - (1 - t) ** 3
+  return Math.min(count - 1, Math.floor(eased * count))
+}
+
+export function startDoubleRuleDraw(
+  session: DoubleRuleSession,
+  config: DoubleRuleConfig,
+  now = Date.now(),
+): DoubleRuleSession {
+  const next = drawDoubleRuleCard(session, config)
+  const drawn = next.lastCategory === 1 ? next.slot1 : next.slot2
+  if (!drawn) return next
+  const pool = (drawn.category === 1 ? config.category1 : config.category2).map(
+    (card) => ({ ...card, category: drawn.category }),
+  )
+  return {
+    ...next,
+    frames: buildSpinFrames(pool, drawn),
+    startedAt: now,
+    endsAt: now + SPIN_DURATION_MS,
+  }
+}
+
+export function isDoubleRuleSpinning(session: DoubleRuleSession, now: number) {
+  return session.frames.length > 0 && now < session.endsAt
+}
+
+export function visibleSlot(
+  session: DoubleRuleSession,
+  category: TwoCardCategory,
+  now: number,
+): TwoCardItem | null {
+  const landed = category === 1 ? session.slot1 : session.slot2
+  if (session.lastCategory !== category || session.frames.length === 0) return landed
+  if (now >= session.endsAt) return landed
+  const index = spinIndex(session.startedAt, session.endsAt, now, session.frames.length)
+  return session.frames[index] ?? landed
 }
