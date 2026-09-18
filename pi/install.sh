@@ -24,7 +24,7 @@ sudo_run apt-get \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold \
   full-upgrade -y
-sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils
+sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales
 sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
 if [[ -d "$DEST/.git" ]]; then
@@ -59,7 +59,16 @@ fi
 if command -v raspi-config >/dev/null; then
   sudo_run raspi-config nonint do_boot_behaviour B4 || true
   sudo_run raspi-config nonint do_blanking 1 || true
+  sudo_run raspi-config nonint do_change_timezone Europe/Stockholm || true
+  sudo_run raspi-config nonint do_change_locale sv_SE.UTF-8 || true
+  sudo_run raspi-config nonint do_configure_keyboard se || true
+  sudo_run raspi-config nonint do_wifi_country SE || true
 fi
+if [[ -f /etc/locale.gen ]] && ! grep -qE '^sv_SE\.UTF-8' /etc/locale.gen; then
+  echo "sv_SE.UTF-8 UTF-8" | sudo_run tee -a /etc/locale.gen >/dev/null || true
+fi
+sudo_run locale-gen sv_SE.UTF-8 >/dev/null 2>&1 || sudo_run locale-gen || true
+sudo_run update-locale LANG=sv_SE.UTF-8 LC_TIME=sv_SE.UTF-8 LANGUAGE=sv_SE:sv || true
 
 echo
 echo "Klart. Starta om skrivbordssessionen eller: sudo reboot"

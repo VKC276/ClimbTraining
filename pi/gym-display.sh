@@ -4,8 +4,10 @@ set -euo pipefail
 DISPLAY_URL="${VVK_DISPLAY_URL:-https://trainer.vastervikclimbing.se/display}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
+FULLSCREEN="$SCRIPT_DIR/chromium-fullscreen.py"
 LOG="${HOME}/.vvk-gym-display.log"
 PROFILE="${HOME}/.config/vvk-gym-chromium"
+CDP_PORT="${VVK_CDP_PORT:-9222}"
 
 log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
@@ -68,10 +70,11 @@ start_chromium() {
   clear_chromium_crash
   log "öppnar $DISPLAY_URL"
   "$CHROMIUM" \
-    --kiosk \
     --ozone-platform=wayland \
     --start-maximized \
     --user-data-dir="$PROFILE" \
+    --remote-debugging-address=127.0.0.1 \
+    --remote-debugging-port="$CDP_PORT" \
     --no-first-run \
     --no-default-browser-check \
     --disable-session-crashed-bubble \
@@ -97,6 +100,7 @@ fi
 
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export VVK_CDP_PORT="$CDP_PORT"
 
 log "startar gymskärm"
 wait_wayland
@@ -117,6 +121,8 @@ while true; do
   if ! chrome_running; then
     start_chromium
     sleep 4
+    python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
+    (sleep 8; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
     (sleep 3; max_pi_audio) &
   fi
   while chrome_running; do
