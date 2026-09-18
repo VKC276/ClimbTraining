@@ -64,6 +64,7 @@ fi
 
 log "startar gymskärm"
 sleep 4
+"$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
 max_pi_audio
 
 pkill -f gym-helper.py >/dev/null 2>&1 || true
