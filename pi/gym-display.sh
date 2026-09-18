@@ -4,10 +4,8 @@ set -euo pipefail
 DISPLAY_URL="${VVK_DISPLAY_URL:-https://trainer.vastervikclimbing.se/display}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
-FULLSCREEN="$SCRIPT_DIR/chromium-fullscreen.py"
 LOG="${HOME}/.vvk-gym-display.log"
 PROFILE="${HOME}/.config/vvk-gym-chromium"
-CDP_PORT="${VVK_CDP_PORT:-9222}"
 
 log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
@@ -77,12 +75,6 @@ PY
   fi
 }
 
-stop_chromium() {
-  pkill -f "user-data-dir=${PROFILE}" >/dev/null 2>&1 || true
-  pkill -f "vvk-gym-chromium" >/dev/null 2>&1 || true
-  sleep 0.4
-}
-
 ensure_helper() {
   if pgrep -f "$HELPER" >/dev/null 2>&1; then
     return 0
@@ -90,6 +82,10 @@ ensure_helper() {
   python3 "$HELPER" >>"$LOG" 2>&1 &
   sleep 0.4
   log "gym-helper startad"
+}
+
+chrome_running() {
+  pgrep -f "user-data-dir=${PROFILE}" >/dev/null 2>&1
 }
 
 start_chromium() {
@@ -100,11 +96,6 @@ start_chromium() {
     --app="$DISPLAY_URL" \
     --user-data-dir="$PROFILE" \
     --class=vvk-gym \
-    --start-fullscreen \
-    --remote-debugging-address=127.0.0.1 \
-    --remote-debugging-port="$CDP_PORT" \
-    --window-size=1920,1080 \
-    --window-position=0,0 \
     --no-first-run \
     --no-default-browser-check \
     --disable-session-crashed-bubble \
@@ -118,7 +109,6 @@ start_chromium() {
     --disable-component-update \
     --disable-features=PushMessaging,Translation,MediaRouter \
     >>"$LOG" 2>&1 &
-  echo $!
 }
 
 LOCK="${HOME}/.vvk-gym-display.lock"
@@ -130,7 +120,6 @@ fi
 
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-export VVK_CDP_PORT="$CDP_PORT"
 
 log "startar gymskärm"
 wait_wayland
@@ -148,14 +137,14 @@ while true; do
   "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
   max_pi_audio
   ensure_helper
-  stop_chromium
-  CHROME_PID="$(start_chromium)"
-  sleep 3
-  python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
-  (sleep 8; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
-  (sleep 3; max_pi_audio) &
-
-  wait "$CHROME_PID" >/dev/null 2>&1 || true
+  if ! chrome_running; then
+    start_chromium
+    sleep 4
+    (sleep 3; max_pi_audio) &
+  fi
+  while chrome_running; do
+    sleep 3
+  done
   log "Chromium slutade, startar om"
   sleep 2
 done
