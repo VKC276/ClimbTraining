@@ -16,6 +16,10 @@ import { normalizeFingerboardConfig } from '../activities/fingerboard/model'
 import { idleFingerboardSession } from '../activities/fingerboard/model'
 import { normalizeTimerConfig } from '../activities/timer/model'
 import { idleTimerSession } from '../activities/timer/model'
+import {
+  normalizeDoubleRuleConfig,
+  normalizeDoubleRuleSession,
+} from '../activities/doubleRule/model'
 import type { GymSettings, GymSnapshot } from '../types'
 import { isFontId } from '../fonts'
 import { normalizeDisplayHardware } from './displayHardware'
@@ -73,6 +77,7 @@ export function normalizeSettings(partial?: Partial<GymSettings>): GymSettings {
     choosePath: normalizeChoosePathConfig(partial?.choosePath),
     fingerboard: normalizeFingerboardConfig(partial?.fingerboard),
     timer: normalizeTimerConfig(partial?.timer),
+    doubleRule: normalizeDoubleRuleConfig(partial?.doubleRule),
   }
 }
 
@@ -137,6 +142,9 @@ function mergeSnapshot(
       ...idleTimerSession,
       ...parsed.timerSession,
     }
+  }
+  if (parsed.doubleRuleSession) {
+    snapshot.doubleRuleSession = normalizeDoubleRuleSession(parsed.doubleRuleSession)
   }
 }
 

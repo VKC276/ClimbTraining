@@ -22,6 +22,7 @@ import type {
   FingerboardConfig,
   FingerboardSession,
 } from './activities/fingerboard/model'
+import type { DoubleRuleConfig, DoubleRuleSession } from './activities/doubleRule/model'
 import type { TimerConfig, TimerSession } from './activities/timer/model'
 
 export type ClockStyle = 'analog' | 'digital'
@@ -43,6 +44,7 @@ export type GymSettings = {
   choosePath: ChoosePathConfig
   fingerboard: FingerboardConfig
   timer: TimerConfig
+  doubleRule: DoubleRuleConfig
 }
 
 export type GymSnapshot = {
@@ -57,6 +59,7 @@ export type GymSnapshot = {
   choosePathSession: ChoosePathSession
   fingerboardSession: FingerboardSession
   timerSession: TimerSession
+  doubleRuleSession: DoubleRuleSession
 }
 
 export type Activity = {

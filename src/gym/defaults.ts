@@ -21,6 +21,10 @@ import {
   idleFingerboardSession,
 } from '../activities/fingerboard/model'
 import { defaultTimerConfig, idleTimerSession } from '../activities/timer/model'
+import {
+  defaultDoubleRuleConfig,
+  idleDoubleRuleSession,
+} from '../activities/doubleRule/model'
 import type { GymSettings, GymSnapshot } from '../types'
 import { defaultFontId } from '../fonts'
 import { defaultDisplayHardware } from './displayHardware'
@@ -46,6 +50,7 @@ export const defaultSettings: GymSettings = {
   choosePath: defaultChoosePathConfig,
   fingerboard: defaultFingerboardConfig,
   timer: defaultTimerConfig,
+  doubleRule: defaultDoubleRuleConfig,
 }
 
 export function defaultSnapshot(now = Date.now()): GymSnapshot {
@@ -69,6 +74,11 @@ export function defaultSnapshot(now = Date.now()): GymSnapshot {
       choosePath: { ...defaultChoosePathConfig },
       fingerboard: { ...defaultFingerboardConfig },
       timer: { ...defaultTimerConfig },
+      doubleRule: {
+        ...defaultDoubleRuleConfig,
+        category1: defaultDoubleRuleConfig.category1.map((card) => ({ ...card })),
+        category2: defaultDoubleRuleConfig.category2.map((card) => ({ ...card })),
+      },
     },
     catchHoldSession: { ...idleCatchHoldSession },
     densityCircuitSession: { ...idleDensityCircuitSession },
@@ -78,6 +88,7 @@ export function defaultSnapshot(now = Date.now()): GymSnapshot {
     choosePathSession: { ...idleChoosePathSession },
     fingerboardSession: { ...idleFingerboardSession },
     timerSession: { ...idleTimerSession },
+    doubleRuleSession: { ...idleDoubleRuleSession },
   }
 }
 

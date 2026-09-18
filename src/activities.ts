@@ -46,6 +46,12 @@ export const activities: Activity[] = [
     description:
       'Klassiska repeaters. Ställ in häng, vila, reps och set, så räknar skärmen.',
   },
+  {
+    id: 'dubbelregeln',
+    title: 'Dubbelregeln',
+    description:
+      'Två kort på skärmen. Samma kategori ersätter, den andra läggs bredvid.',
+  },
 ]
 
 export function getActivity(id: string | null): Activity | undefined {

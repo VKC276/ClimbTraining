@@ -56,6 +56,12 @@ import {
   type TimerConfig,
   type TimerSession,
 } from '../activities/timer/model'
+import {
+  idleDoubleRuleSession,
+  normalizeDoubleRuleConfig,
+  type DoubleRuleConfig,
+  type DoubleRuleSession,
+} from '../activities/doubleRule/model'
 import type { GymSettings, GymSnapshot } from '../types'
 import {
   clearTrainerScreenId,
@@ -101,6 +107,8 @@ type GymContextValue = {
   setFingerboardSession: (session: FingerboardSession) => void
   updateTimer: (patch: Partial<TimerConfig>) => void
   setTimerSession: (session: TimerSession) => void
+  updateDoubleRule: (patch: Partial<DoubleRuleConfig>) => void
+  setDoubleRuleSession: (session: DoubleRuleSession) => void
 }
 
 const GymContext = createContext<GymContextValue | null>(null)
@@ -250,6 +258,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
         choosePathSession: { ...idleChoosePathSession },
         fingerboardSession: { ...idleFingerboardSession },
         timerSession: { ...idleTimerSession },
+        doubleRuleSession: { ...idleDoubleRuleSession },
       })
     },
     [commit],
@@ -268,6 +277,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
       choosePathSession: { ...idleChoosePathSession },
       fingerboardSession: { ...idleFingerboardSession },
       timerSession: { ...idleTimerSession },
+      doubleRuleSession: { ...idleDoubleRuleSession },
     })
   }, [commit])
 
@@ -503,6 +513,35 @@ export function GymProvider({ children }: { children: ReactNode }) {
     [commit],
   )
 
+  const setDoubleRuleSession = useCallback(
+    (session: DoubleRuleSession) => {
+      commit({
+        ...snapshotRef.current,
+        lastInteractionAt: Date.now(),
+        doubleRuleSession: session,
+      })
+    },
+    [commit],
+  )
+
+  const updateDoubleRule = useCallback(
+    (patch: Partial<DoubleRuleConfig>) => {
+      const current = snapshotRef.current
+      commit({
+        ...current,
+        lastInteractionAt: Date.now(),
+        settings: {
+          ...current.settings,
+          doubleRule: normalizeDoubleRuleConfig({
+            ...current.settings.doubleRule,
+            ...patch,
+          }),
+        },
+      })
+    },
+    [commit],
+  )
+
   const updateSettings = useCallback(
     (patch: Partial<GymSettings>) => {
       const current = snapshotRef.current
@@ -543,6 +582,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
       setFingerboardSession,
       updateTimer,
       setTimerSession,
+      updateDoubleRule,
+      setDoubleRuleSession,
     }),
     [
       snapshot,
@@ -570,6 +611,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
       setFingerboardSession,
       updateTimer,
       setTimerSession,
+      updateDoubleRule,
+      setDoubleRuleSession,
     ],
   )
 

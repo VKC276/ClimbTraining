@@ -7,6 +7,7 @@ import { EmomPanel } from '../activities/emom/EmomPanel'
 import { ChoosePathPanel } from '../activities/choosePath/ChoosePathPanel'
 import { FingerboardPanel } from '../activities/fingerboard/FingerboardPanel'
 import { TimerPanel } from '../activities/timer/TimerPanel'
+import { DoubleRulePanel } from '../activities/doubleRule/DoubleRulePanel'
 import { DigitalClock } from './DigitalClock'
 import type { Activity } from '../types'
 
@@ -47,6 +48,9 @@ function ActivityBody({
   if (activity.id === 'timer') {
     return <TimerPanel variant={variant} />
   }
+  if (activity.id === 'dubbelregeln') {
+    return <DoubleRulePanel variant={variant} />
+  }
   return (
     <>
       <p className="activity-lead">{activity.description}</p>
@@ -73,7 +77,8 @@ export function ActivityStage({
     activity.id === 'emom' ||
     activity.id === 'choose-path' ||
     activity.id === 'fingerboard' ||
-    activity.id === 'timer'
+    activity.id === 'timer' ||
+    activity.id === 'dubbelregeln'
 
   return (
     <div
