@@ -36,22 +36,7 @@ Uppdatera senare med samma kommando, eller `bash ~/ClimbTraining/pi/install.sh`.
 
 Logg: `cat ~/.vvk-gym-display.log`
 
-### Närvarosensor (ESP32-WROOM-32)
-
-Valfritt: en ESP32 DevKit C på USB tänder TV:n via CEC när någon är vid skärmen. Gymskärmens helper läser CSI-strömmen automatiskt om kortet sitter i.
-
-1. Öppna `csi-presence-sensor/firmware/csi_presence_sensor/csi_presence_sensor.ino` i Arduino IDE (kort: ESP32 Dev Module). Kopiera `config.example.h` till `config.h` och fyll i hallens WiFi, sen Upload. Router-IP kommer via DHCP.
-2. Flytta USB-kabeln till Pi:n. Kör om `pi/install.sh` så användaren är i `dialout`, starta om.
-3. Kalibrera i Pi Connect:
-
-```bash
-~/ClimbTraining/pi/csi-tune.sh          # status och avstånd till tröskel
-~/ClimbTraining/pi/csi-tune.sh watch    # live
-~/ClimbTraining/pi/csi-tune.sh 2.5      # lägre = känsligare
-~/ClimbTraining/pi/csi-tune.sh hold 10  # släck efter 10 min stillhet
-```
-
-Schema släcker fortfarande vid sluttid. Inom öppettid tänds TV:n först när sensorn ser rörelse. Strömknappen på kontrollpanelen går före.
+TV:n styrs med HDMI-CEC från kontrollpanelen och valfritt schema under Inställningar.
 
 ## Lokalt
 

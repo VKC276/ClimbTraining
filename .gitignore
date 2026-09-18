@@ -13,7 +13,6 @@ dist-ssr
 *.local
 .wrangler
 .dev.vars
-csi-presence-sensor/firmware/csi_presence_sensor/config.h
 
 # Editor directories and files
 .vscode/*

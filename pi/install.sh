@@ -19,11 +19,7 @@ sudo_run() {
 
 echo "Installerar gymskärmen..."
 sudo_run apt-get update -y
-sudo_run apt-get install -y git cec-utils python3 python3-serial espeak-ng espeak-ng-data
-sudo_run usermod -aG dialout "$USER" || true
-sudo_run systemctl stop brltty ModemManager 2>/dev/null || true
-sudo_run systemctl mask brltty 2>/dev/null || true
-sudo_run apt-get remove -y brltty 2>/dev/null || true
+sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data
 if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
   sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 fi
@@ -44,8 +40,6 @@ chmod +x \
   "$DEST/pi/install-autostart.sh" \
   "$DEST/pi/gym-display.sh" \
   "$DEST/pi/gym-helper.py" \
-  "$DEST/pi/csi-tune.sh" \
-  "$DEST/pi/csi-sniff.sh" \
   "$DEST/pi/chromium-fullscreen.py"
 
 "$DEST/pi/install-autostart.sh"
