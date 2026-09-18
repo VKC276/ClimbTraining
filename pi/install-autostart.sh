@@ -80,9 +80,14 @@ end = "<!-- /VVK gymskärm -->"
 if start in text and end in text:
     text = text[: text.find(start)] + text[text.find(end) + len(end) :]
 block = f"""{start}
-    <windowRule identifier="vvk-gym" skipTaskbar="yes" serverDecoration="no"/>
-    <windowRule identifier="chromium*" skipTaskbar="yes" serverDecoration="no"/>
-    <windowRule identifier="Chromium*" skipTaskbar="yes" serverDecoration="no"/>
+    <windowRule identifier="chromium*" serverDecoration="no">
+      <action name="MoveTo" x="0" y="0"/>
+      <action name="Maximize"/>
+    </windowRule>
+    <windowRule identifier="Chromium*" serverDecoration="no">
+      <action name="MoveTo" x="0" y="0"/>
+      <action name="Maximize"/>
+    </windowRule>
     {end}"""
 if "<windowRules>" in text:
     text = text.replace("<windowRules>", "<windowRules>\n    " + block, 1)

@@ -13,8 +13,8 @@ log() {
 
 wait_wayland() {
   local i socket
-  for i in $(seq 1 30); do
-    if [[ -n "${WAYLAND_DISPLAY:-}" && -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]]; then
+  for i in $(seq 1 120); do
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]]; then
       return 0
     fi
     for socket in "$XDG_RUNTIME_DIR"/wayland-*; do
@@ -25,6 +25,7 @@ wait_wayland() {
     done
     sleep 1
   done
+  log "ingen Wayland-socket, Chromium kan hamna fel"
 }
 
 max_pi_audio() {
@@ -93,9 +94,9 @@ start_chromium() {
   log "öppnar $DISPLAY_URL"
   "$CHROMIUM" \
     --kiosk \
-    --app="$DISPLAY_URL" \
+    --ozone-platform=wayland \
+    --start-maximized \
     --user-data-dir="$PROFILE" \
-    --class=vvk-gym \
     --no-first-run \
     --no-default-browser-check \
     --disable-session-crashed-bubble \
@@ -108,6 +109,7 @@ start_chromium() {
     --disable-sync \
     --disable-component-update \
     --disable-features=PushMessaging,Translation,MediaRouter \
+    "$DISPLAY_URL" \
     >>"$LOG" 2>&1 &
 }
 
