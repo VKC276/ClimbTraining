@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DISPLAY_SH="$SCRIPT_DIR/gym-display.sh"
 
-chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/set-display-1080.sh" "$SCRIPT_DIR/chromium-fullscreen.py"
+chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/set-display-1080.sh" "$SCRIPT_DIR/set-hdmi-audio.sh" "$SCRIPT_DIR/chromium-fullscreen.py"
 
 pkill -f vvk-hide-cursor >/dev/null 2>&1 || true
 

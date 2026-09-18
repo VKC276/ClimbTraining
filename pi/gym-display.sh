@@ -29,32 +29,7 @@ wait_wayland() {
 }
 
 max_pi_audio() {
-  if command -v pactl >/dev/null; then
-    SINK="$(pactl list short sinks 2>/dev/null | awk 'tolower($0) ~ /hdmi/ { print $2; exit }')"
-    SINK="${SINK:-@DEFAULT_SINK@}"
-    pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
-    pactl list short sinks 2>/dev/null | awk '{ print $2 }' | while read -r name; do
-      [[ -z "$name" ]] && continue
-      pactl set-sink-mute "$name" 0 >/dev/null 2>&1 || true
-      pactl set-sink-volume "$name" 100% >/dev/null 2>&1 || true
-    done
-    pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-    pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
-    pactl list short sink-inputs 2>/dev/null | awk '{ print $1 }' | while read -r id; do
-      [[ -z "$id" ]] && continue
-      pactl set-sink-input-mute "$id" 0 >/dev/null 2>&1 || true
-      pactl set-sink-input-volume "$id" 100% >/dev/null 2>&1 || true
-    done
-  fi
-  if command -v wpctl >/dev/null; then
-    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-    wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
-  fi
-  if command -v amixer >/dev/null; then
-    for control in HDMI PCM Master Digital; do
-      amixer -q sset "$control" 100% unmute >/dev/null 2>&1 || true
-    done
-  fi
+  "$SCRIPT_DIR/set-hdmi-audio.sh" >/dev/null 2>&1 || true
 }
 
 clear_chromium_crash() {
@@ -145,7 +120,8 @@ while true; do
     (sleep 3; max_pi_audio) &
   fi
   while chrome_running; do
-    sleep 3
+    max_pi_audio
+    sleep 8
   done
   log "Chromium slutade, startar om"
   sleep 2

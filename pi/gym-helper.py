@@ -147,23 +147,21 @@ def hdmi_sink() -> str:
 
 
 def unmute_pi_hdmi() -> None:
+    script = Path(__file__).resolve().parent / "set-hdmi-audio.sh"
+    if script.is_file():
+        run(["bash", str(script)])
+        return
     pactl = shutil.which("pactl")
     if pactl:
         sink = hdmi_sink()
         run([pactl, "set-default-sink", sink])
-        _, sinks = run([pactl, "list", "short", "sinks"])
-        names = []
-        for line in sinks.splitlines():
-            parts = line.split()
-            if len(parts) >= 2:
-                names.append(parts[1])
-        for name in [*names, "@DEFAULT_SINK@"]:
-            run([pactl, "set-sink-mute", name, "0"])
-            run([pactl, "set-sink-volume", name, "100%"])
+        run([pactl, "set-sink-mute", sink, "0"])
+        run([pactl, "set-sink-volume", sink, "100%"])
         _, inputs = run([pactl, "list", "short", "sink-inputs"])
         for line in inputs.splitlines():
             index = line.split()[0]
             if index.isdigit():
+                run([pactl, "move-sink-input", index, sink])
                 run([pactl, "set-sink-input-mute", index, "0"])
                 run([pactl, "set-sink-input-volume", index, "100%"])
     wpctl = shutil.which("wpctl")
@@ -172,6 +170,7 @@ def unmute_pi_hdmi() -> None:
         run([wpctl, "set-volume", "@DEFAULT_AUDIO_SINK@", "1.0"])
     amixer = shutil.which("amixer")
     if amixer:
+        run([amixer, "-q", "cset", "numid=3", "2"])
         for control in ("HDMI", "PCM", "Master", "Digital"):
             run([amixer, "-q", "sset", control, "100%", "unmute"])
 

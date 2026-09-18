@@ -24,7 +24,7 @@ sudo_run apt-get \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold \
   full-upgrade -y
-sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr
+sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils
 sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
 if [[ -d "$DEST/.git" ]]; then
@@ -44,10 +44,12 @@ chmod +x \
   "$DEST/pi/gym-display.sh" \
   "$DEST/pi/gym-helper.py" \
   "$DEST/pi/set-display-1080.sh" \
+  "$DEST/pi/set-hdmi-audio.sh" \
   "$DEST/pi/chromium-fullscreen.py"
 
 "$DEST/pi/install-autostart.sh"
 "$DEST/pi/set-display-1080.sh" boot || true
+"$DEST/pi/set-hdmi-audio.sh" || true
 
 pkill -f gym-helper.py >/dev/null 2>&1 || true
 
