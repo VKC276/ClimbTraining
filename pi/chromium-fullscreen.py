@@ -138,8 +138,8 @@ def window_state(browser: socket.socket, target_id: str, call_id: int) -> tuple[
     return window_id, state
 
 
-def send_f11(page: socket.socket, call_id: int) -> None:
-    for kind in ("keyDown", "keyUp"):
+def send_f11(page: socket.socket, call_id: int) -> int:
+    for kind in ("rawKeyDown", "keyDown", "keyUp"):
         cdp_call(
             page,
             call_id,
@@ -153,6 +153,7 @@ def send_f11(page: socket.socket, call_id: int) -> None:
             },
         )
         call_id += 1
+    return call_id
 
 
 def page_target_id(port: int) -> str | None:
@@ -168,7 +169,7 @@ def main() -> None:
     found = wait_targets(port)
     if not found:
         log("ingen CDP-anslutning")
-        return
+        raise SystemExit(1)
     browser_url, page_url = found
     browser = ws_open(browser_url)
     page = ws_open(page_url)
@@ -222,12 +223,12 @@ def main() -> None:
                 },
             )
             call_id += 1
-        send_f11(page, call_id)
-        call_id += 2
+        call_id = send_f11(page, call_id)
         time.sleep(0.9)
     log("klar" if fullscreen else "inte fullscreen")
     browser.close()
     page.close()
+    raise SystemExit(0 if fullscreen else 1)
 
 
 if __name__ == "__main__":

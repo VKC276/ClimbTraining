@@ -79,14 +79,31 @@ start = "<!-- VVK gymskärm -->"
 end = "<!-- /VVK gymskärm -->"
 if start in text and end in text:
     text = text[: text.find(start)] + text[text.find(end) + len(end) :]
+if '<keybind key="F11">' not in text:
+    f11 = """    <keybind key="F11">
+      <action name="ToggleFullscreen"/>
+    </keybind>
+"""
+    if "<keyboard>" in text:
+        text = text.replace("<keyboard>", "<keyboard>\n" + f11, 1)
+    elif "</labwc_config>" in text:
+        text = text.replace(
+            "</labwc_config>",
+            "  <keyboard>\n" + f11 + "  </keyboard>\n</labwc_config>",
+            1,
+        )
 block = f"""{start}
-    <windowRule identifier="chromium*" serverDecoration="no">
-      <action name="MoveTo" x="0" y="0"/>
+    <windowRule identifier="chromium*" matchOnce="true" serverDecoration="no">
       <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
     </windowRule>
-    <windowRule identifier="Chromium*" serverDecoration="no">
-      <action name="MoveTo" x="0" y="0"/>
+    <windowRule identifier="Chromium*" matchOnce="true" serverDecoration="no">
       <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
+    </windowRule>
+    <windowRule identifier="org.chromium.Chromium*" matchOnce="true" serverDecoration="no">
+      <action name="Maximize"/>
+      <action name="ToggleFullscreen"/>
     </windowRule>
     {end}"""
 if "<windowRules>" in text:

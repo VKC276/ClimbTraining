@@ -24,7 +24,7 @@ sudo_run apt-get \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold \
   full-upgrade -y
-sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales
+sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales wtype
 sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
 if [[ -d "$DEST/.git" ]]; then

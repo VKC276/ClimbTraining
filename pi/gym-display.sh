@@ -72,9 +72,11 @@ start_chromium() {
   "$CHROMIUM" \
     --ozone-platform=wayland \
     --start-maximized \
+    --start-fullscreen \
     --user-data-dir="$PROFILE" \
     --remote-debugging-address=127.0.0.1 \
     --remote-debugging-port="$CDP_PORT" \
+    --remote-allow-origins=* \
     --no-first-run \
     --no-default-browser-check \
     --disable-session-crashed-bubble \
@@ -114,6 +116,14 @@ if [[ -z "$CHROMIUM" ]]; then
   exit 1
 fi
 
+go_fullscreen() {
+  python3 "$FULLSCREEN" >>"$LOG" 2>&1 && return 0
+  if command -v wtype >/dev/null; then
+    log "F11 via wtype"
+    wtype -k F11 >>"$LOG" 2>&1 || true
+  fi
+}
+
 while true; do
   "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
   max_pi_audio
@@ -121,8 +131,8 @@ while true; do
   if ! chrome_running; then
     start_chromium
     sleep 4
-    python3 "$FULLSCREEN" >>"$LOG" 2>&1 || true
-    (sleep 8; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
+    go_fullscreen
+    (sleep 8; go_fullscreen) &
     (sleep 3; max_pi_audio) &
   fi
   while chrome_running; do
