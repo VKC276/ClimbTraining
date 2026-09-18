@@ -13,34 +13,6 @@ log() {
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
 }
 
-hdmi_connected() {
-  local status
-  for status in /sys/class/drm/card*-HDMI-A-*/status /sys/class/drm/card*-HDMI-*/status; do
-    [[ -e "$status" ]] || continue
-    if [[ "$(cat "$status" 2>/dev/null || true)" == "connected" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-wait_hdmi() {
-  local i
-  if hdmi_connected; then
-    return 0
-  fi
-  log "väntar på HDMI"
-  for i in $(seq 1 90); do
-    if hdmi_connected; then
-      log "HDMI inne"
-      sleep 2
-      return 0
-    fi
-    sleep 1
-  done
-  log "ingen HDMI än, försöker ändå"
-}
-
 wait_wayland() {
   local i socket
   for i in $(seq 1 30); do
@@ -124,10 +96,11 @@ start_chromium() {
   clear_chromium_crash
   log "öppnar $DISPLAY_URL"
   "$CHROMIUM" \
+    --kiosk \
+    --app="$DISPLAY_URL" \
     --user-data-dir="$PROFILE" \
     --class=vvk-gym \
-    --ozone-platform=wayland \
-    --ozone-platform-hint=wayland \
+    --start-fullscreen \
     --remote-debugging-address=127.0.0.1 \
     --remote-debugging-port="$CDP_PORT" \
     --window-size=1920,1080 \
@@ -144,7 +117,6 @@ start_chromium() {
     --disable-sync \
     --disable-component-update \
     --disable-features=PushMessaging,Translation,MediaRouter \
-    "$DISPLAY_URL" \
     >>"$LOG" 2>&1 &
   echo $!
 }
@@ -162,7 +134,6 @@ export VVK_CDP_PORT="$CDP_PORT"
 
 log "startar gymskärm"
 wait_wayland
-wait_hdmi
 "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
 max_pi_audio
 ensure_helper
@@ -174,7 +145,6 @@ if [[ -z "$CHROMIUM" ]]; then
 fi
 
 while true; do
-  wait_hdmi
   "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
   max_pi_audio
   ensure_helper
@@ -185,15 +155,7 @@ while true; do
   (sleep 8; python3 "$FULLSCREEN" >>"$LOG" 2>&1) &
   (sleep 3; max_pi_audio) &
 
-  while kill -0 "$CHROME_PID" >/dev/null 2>&1; do
-    if ! hdmi_connected; then
-      log "HDMI ur, väntar och startar om"
-      stop_chromium
-      break
-    fi
-    sleep 2
-  done
   wait "$CHROME_PID" >/dev/null 2>&1 || true
-  log "Chromium slutade, ny start när HDMI finns"
-  sleep 1
+  log "Chromium slutade, startar om"
+  sleep 2
 done

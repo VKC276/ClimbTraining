@@ -25,9 +25,7 @@ sudo_run apt-get \
   -o Dpkg::Options::=--force-confold \
   full-upgrade -y
 sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr
-if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
-  sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
-fi
+sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
 if [[ -d "$DEST/.git" ]]; then
   git -C "$DEST" remote set-url origin "$REPO_URL"
@@ -58,6 +56,7 @@ if command -v timedatectl >/dev/null; then
 fi
 if command -v raspi-config >/dev/null; then
   sudo_run raspi-config nonint do_boot_behaviour B4 || true
+  sudo_run raspi-config nonint do_blanking 1 || true
 fi
 
 echo

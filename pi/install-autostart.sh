@@ -6,8 +6,28 @@ DISPLAY_SH="$SCRIPT_DIR/gym-display.sh"
 
 chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/install-autostart.sh" "$SCRIPT_DIR/set-display-1080.sh" "$SCRIPT_DIR/chromium-fullscreen.py"
 
-rm -f "$HOME/.config/autostart/gym-display.desktop"
 pkill -f vvk-hide-cursor >/dev/null 2>&1 || true
+
+mkdir -p "$HOME/.config/autostart"
+python3 - "$HOME/.config/autostart/gym-display.desktop" "$DISPLAY_SH" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+script = sys.argv[2]
+path.write_text(
+    "\n".join(
+        [
+            "[Desktop Entry]",
+            "Type=Application",
+            "Name=VVK gymskärm",
+            f"Exec={script}",
+            "X-GNOME-Autostart-enabled=true",
+            "",
+        ]
+    ),
+    encoding="utf-8",
+)
+PY
 
 if [[ -f "$HOME/.config/wayfire.ini" ]]; then
   python3 - "$HOME/.config/wayfire.ini" <<'PY'
@@ -60,18 +80,9 @@ end = "<!-- /VVK gymskärm -->"
 if start in text and end in text:
     text = text[: text.find(start)] + text[text.find(end) + len(end) :]
 block = f"""{start}
-    <windowRule identifier="vvk-gym" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
-      <action name="Maximize"/>
-      <action name="ToggleFullscreen"/>
-    </windowRule>
-    <windowRule identifier="chromium*" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
-      <action name="Maximize"/>
-      <action name="ToggleFullscreen"/>
-    </windowRule>
-    <windowRule identifier="Chromium*" matchOnce="true" skipTaskbar="yes" serverDecoration="no">
-      <action name="Maximize"/>
-      <action name="ToggleFullscreen"/>
-    </windowRule>
+    <windowRule identifier="vvk-gym" skipTaskbar="yes" serverDecoration="no"/>
+    <windowRule identifier="chromium*" skipTaskbar="yes" serverDecoration="no"/>
+    <windowRule identifier="Chromium*" skipTaskbar="yes" serverDecoration="no"/>
     {end}"""
 if "<windowRules>" in text:
     text = text.replace("<windowRules>", "<windowRules>\n    " + block, 1)
@@ -88,7 +99,7 @@ PY
 
 echo "Autostart är installerad för $(whoami)."
 echo "  En startväg: $HOME/.config/labwc/autostart"
-echo "  XDG- och Wayfire-dubbletter tas bort."
+echo "  Autostart: labwc och ~/.config/autostart"
 echo
 echo "Starta om: sudo reboot"
 echo "Logg: $HOME/.vvk-gym-display.log"
