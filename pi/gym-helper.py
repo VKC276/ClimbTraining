@@ -141,9 +141,10 @@ def restore_hdmi_output() -> None:
 
 def send_power(on: bool) -> None:
     if on:
-        # Bara Image View On. Active Source (`as`) river vc4-HDMI på Pi 4:
-        # TV:n tänds, men Pi:n slutar skicka bild.
         send_cec_command(f"on {TV_ADDRESS}")
+        # Active Source byter TV:ns ingång till Pi. På Pi 4 kan `as` fälla
+        # vc4-HDMI, så bilden återställs direkt efteråt.
+        send_cec_command("as")
         restore_hdmi_output()
         unmute_pi_hdmi()
         return
