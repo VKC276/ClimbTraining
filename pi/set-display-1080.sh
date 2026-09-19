@@ -26,9 +26,20 @@ set_boot_mode() {
   text="$(sudo_run cat "$file")"
   text="${text%"${text##*[![:space:]]}"}"
   text="$(printf '%s' "$text" | sed -E 's/[[:space:]]*video=HDMI-A-[12]:[^[:space:]]*//g')"
-  text="${text} video=HDMI-A-1:1920x1080@60"
+  # Trailing D tvingar digital HDMI även när HPD blinkar vid CEC-påslag.
+  text="${text} video=HDMI-A-1:1920x1080@60D"
   printf '%s\n' "$text" | sudo_run tee "$file" >/dev/null
-  echo "Kernel HDMI-A-1 satt till 1920x1080 (gäller efter reboot)."
+  echo "Kernel HDMI-A-1 satt till 1920x1080@60D (gäller efter reboot)."
+}
+
+hdmi_names() {
+  local path name
+  for path in /sys/class/drm/card*-HDMI-A-*/status; do
+    [[ -e "$path" ]] || continue
+    name="$(basename "$(dirname "$path")")"
+    echo "${name#card*-}" | sed 's/^card[0-9]*-//'
+  done
+  wlr-randr 2>/dev/null | awk '/^HDMI/ { print $1 }'
 }
 
 set_output_mode() {
@@ -36,7 +47,15 @@ set_output_mode() {
   wlr-randr --output "$out" --on --mode 1920x1080 >/dev/null 2>&1 \
     || wlr-randr --output "$out" --on --mode 1920x1080@60.000000 >/dev/null 2>&1 \
     || wlr-randr --output "$out" --on --mode 1920x1080@50.000000 >/dev/null 2>&1 \
+    || wlr-randr --output "$out" --on >/dev/null 2>&1 \
     || return 1
+}
+
+kick_output() {
+  local out="$1"
+  wlr-randr --output "$out" --off >/dev/null 2>&1 || true
+  sleep 0.5
+  set_output_mode "$out"
 }
 
 connected_hdmi() {
@@ -53,6 +72,7 @@ connected_hdmi() {
 }
 
 set_session_mode() {
+  local wake="${1:-}"
   if ! command -v wlr-randr >/dev/null; then
     echo "wlr-randr saknas"
     return 0
@@ -60,13 +80,20 @@ set_session_mode() {
   local primary="" out
   primary="$(connected_hdmi || true)"
   if [[ -z "$primary" ]]; then
-    primary="$(wlr-randr 2>/dev/null | awk '/^HDMI/ { print $1; exit }')"
+    primary="$(hdmi_names | awk 'NF { print; exit }')"
   fi
   if [[ -z "$primary" ]]; then
     echo "ingen HDMI-utgång"
     return 0
   fi
-  if set_output_mode "$primary"; then
+  if [[ "$wake" == "wake" ]]; then
+    if kick_output "$primary" || set_output_mode "$primary"; then
+      echo "skärm $primary → 1920x1080"
+    else
+      echo "kunde inte sätta 1920x1080 på $primary"
+      return 0
+    fi
+  elif set_output_mode "$primary"; then
     echo "skärm $primary → 1920x1080"
   elif command -v xrandr >/dev/null && xrandr --output "$primary" --mode 1920x1080 >/dev/null 2>&1; then
     echo "skärm $primary → 1920x1080 (xrandr)"
@@ -83,6 +110,11 @@ set_session_mode() {
 
 if [[ "$MODE" == "boot" ]]; then
   set_boot_mode
+  exit 0
+fi
+
+if [[ "$MODE" == "wake" ]]; then
+  set_session_mode wake
   exit 0
 fi
 

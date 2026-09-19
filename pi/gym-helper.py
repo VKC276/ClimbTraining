@@ -125,10 +125,26 @@ def speak_text(text: str, color_id: str = "") -> None:
         log(f"tal `{cleaned}`")
 
 
+def restore_hdmi_output() -> None:
+    script = Path(__file__).resolve().parent / "set-display-1080.sh"
+    if not script.is_file():
+        return
+    for attempt in range(8):
+        time.sleep(2 if attempt == 0 else 1)
+        code, text = run(["bash", str(script), "wake"])
+        summary = " ".join(text.split()) or str(code)
+        log(f"hdmi restore {attempt + 1}/8: {summary}")
+        if "1920x1080" in text:
+            return
+    log("hdmi restore misslyckades")
+
+
 def send_power(on: bool) -> None:
     if on:
+        # Bara Image View On. Active Source (`as`) river vc4-HDMI på Pi 4:
+        # TV:n tänds, men Pi:n slutar skicka bild.
         send_cec_command(f"on {TV_ADDRESS}")
-        send_cec_command("as")
+        restore_hdmi_output()
         unmute_pi_hdmi()
         return
     send_cec_command(f"standby {TV_ADDRESS}")
