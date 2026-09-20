@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -55,19 +56,13 @@ export function ChoosePathPanel({ variant }: ChoosePathPanelProps) {
         <div className="choose-editor">
           <p className="choose-hint">{choosePathIntro}</p>
           <form className="density-settings" onSubmit={(event) => event.preventDefault()}>
-            <label className="field">
-              <span>Tid (sekunder)</span>
-              <input
-                type="number"
-                min={10}
-                max={300}
-                step={1}
-                value={seconds}
-                onChange={(event) =>
-                  updateChoosePath({ seconds: Number(event.target.value) })
-                }
-              />
-            </label>
+            <NumberField
+              label="Tid (sekunder)"
+              min={10}
+              max={300}
+              value={seconds}
+              onChange={(next) => updateChoosePath({ seconds: next })}
+            />
           </form>
         </div>
       ) : null}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent } from 'react'
 import { FitScale } from '../../components/FitScale'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -238,45 +239,27 @@ export function EmomPanel({ variant }: EmomPanelProps) {
             </div>
           </form>
           <form className="density-settings" onSubmit={(event) => event.preventDefault()}>
-            <label className="field">
-              <span>Intervall (sekunder)</span>
-              <input
-                type="number"
-                min={15}
-                max={180}
-                step={1}
-                value={config.intervalSeconds}
-                onChange={(event) =>
-                  updateEmom({ intervalSeconds: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Antal rundor (minuter om 60 s)</span>
-              <input
-                type="number"
-                min={1}
-                max={120}
-                step={1}
-                value={config.totalRounds}
-                onChange={(event) =>
-                  updateEmom({ totalRounds: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Varning (sekunder kvar)</span>
-              <input
-                type="number"
-                min={3}
-                max={30}
-                step={1}
-                value={config.warnSeconds}
-                onChange={(event) =>
-                  updateEmom({ warnSeconds: Number(event.target.value) })
-                }
-              />
-            </label>
+            <NumberField
+              label="Intervall (sekunder)"
+              min={15}
+              max={180}
+              value={config.intervalSeconds}
+              onChange={(intervalSeconds) => updateEmom({ intervalSeconds })}
+            />
+            <NumberField
+              label="Antal rundor (minuter om 60 s)"
+              min={1}
+              max={120}
+              value={config.totalRounds}
+              onChange={(totalRounds) => updateEmom({ totalRounds })}
+            />
+            <NumberField
+              label="Varning (sekunder kvar)"
+              min={3}
+              max={30}
+              value={config.warnSeconds}
+              onChange={(warnSeconds) => updateEmom({ warnSeconds })}
+            />
             <div className="field">
               <span>Varningssignal</span>
               <div className="density-signal-row">

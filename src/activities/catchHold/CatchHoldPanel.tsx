@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -120,45 +121,29 @@ export function CatchHoldPanel({ variant }: CatchHoldPanelProps) {
             </div>
           </fieldset>
 
-          <label className="field">
-            <span>Nedräkningstid (sekunder)</span>
-            <input
-              type="number"
-              min={1}
-              max={60}
-              step={1}
-              value={config.countdownSeconds}
-              onChange={(event) =>
-                updateCatchHold({ countdownSeconds: Number(event.target.value) })
-              }
-            />
-          </label>
-
-          <label className="field">
-            <span>Antal omgångar</span>
-            <input
-              type="number"
-              min={1}
-              max={99}
-              step={1}
-              value={config.rounds}
-              onChange={(event) => updateCatchHold({ rounds: Number(event.target.value) })}
-            />
-          </label>
-
-          <label className="field">
-            <span>Tid mellan omgångar (sekunder)</span>
-            <input
-              type="number"
-              min={1}
-              max={300}
-              step={1}
-              value={config.betweenRoundsSeconds}
-              onChange={(event) =>
-                updateCatchHold({ betweenRoundsSeconds: Number(event.target.value) })
-              }
-            />
-          </label>
+          <NumberField
+            label="Nedräkningstid (sekunder)"
+            min={1}
+            max={60}
+            value={config.countdownSeconds}
+            onChange={(countdownSeconds) => updateCatchHold({ countdownSeconds })}
+          />
+          <NumberField
+            label="Antal omgångar"
+            min={1}
+            max={99}
+            value={config.rounds}
+            onChange={(rounds) => updateCatchHold({ rounds })}
+          />
+          <NumberField
+            label="Tid mellan omgångar (sekunder)"
+            min={1}
+            max={300}
+            value={config.betweenRoundsSeconds}
+            onChange={(betweenRoundsSeconds) =>
+              updateCatchHold({ betweenRoundsSeconds })
+            }
+          />
 
           <label className={config.soundOn ? 'choice selected' : 'choice'}>
             <input

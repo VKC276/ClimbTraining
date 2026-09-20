@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { FitScale } from '../../components/FitScale'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -146,45 +147,27 @@ export function DensityCircuitPanel({ variant }: DensityCircuitPanelProps) {
     <div className={`density density-${variant} density-${session.phase}`}>
       {variant === 'trainer' && !running ? (
         <form className="density-settings" onSubmit={(event) => event.preventDefault()}>
-          <label className="field">
-            <span>Arbetsintervall (minuter)</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              step={1}
-              value={config.workMinutes}
-              onChange={(event) =>
-                updateDensityCircuit({ workMinutes: Number(event.target.value) })
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Vila (minuter)</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              step={1}
-              value={config.restMinutes}
-              onChange={(event) =>
-                updateDensityCircuit({ restMinutes: Number(event.target.value) })
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Antal varv</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              step={1}
-              value={config.rounds}
-              onChange={(event) =>
-                updateDensityCircuit({ rounds: Number(event.target.value) })
-              }
-            />
-          </label>
+          <NumberField
+            label="Arbetsintervall (minuter)"
+            min={1}
+            max={30}
+            value={config.workMinutes}
+            onChange={(workMinutes) => updateDensityCircuit({ workMinutes })}
+          />
+          <NumberField
+            label="Vila (minuter)"
+            min={1}
+            max={20}
+            value={config.restMinutes}
+            onChange={(restMinutes) => updateDensityCircuit({ restMinutes })}
+          />
+          <NumberField
+            label="Antal varv"
+            min={1}
+            max={20}
+            value={config.rounds}
+            onChange={(rounds) => updateDensityCircuit({ rounds })}
+          />
           <div className="field">
             <span>Signal när klättring tar slut</span>
             <div className="density-signal-row">

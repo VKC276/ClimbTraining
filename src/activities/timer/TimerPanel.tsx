@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { FitScale } from '../../components/FitScale'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -132,30 +133,20 @@ export function TimerPanel({ variant }: TimerPanelProps) {
             })}
           </div>
           <div className="timer-numbers">
-            <label className="field">
-              <span>Minuter</span>
-              <input
-                type="number"
-                min={0}
-                max={99}
-                value={config.minutes}
-                onChange={(event) =>
-                  updateTimer({ minutes: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Sekunder</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={config.seconds}
-                onChange={(event) =>
-                  updateTimer({ seconds: Number(event.target.value) })
-                }
-              />
-            </label>
+            <NumberField
+              label="Minuter"
+              min={0}
+              max={99}
+              value={config.minutes}
+              onChange={(minutes) => updateTimer({ minutes })}
+            />
+            <NumberField
+              label="Sekunder"
+              min={0}
+              max={59}
+              value={config.seconds}
+              onChange={(seconds) => updateTimer({ seconds })}
+            />
           </div>
           <label className={config.loop ? 'choice selected' : 'choice'}>
             <input

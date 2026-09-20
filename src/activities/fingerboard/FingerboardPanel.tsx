@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { FitScale } from '../../components/FitScale'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -111,67 +112,42 @@ export function FingerboardPanel({ variant }: FingerboardPanelProps) {
         <form className="finger-settings" onSubmit={(event) => event.preventDefault()}>
           <p className="finger-hint">{fingerboardIntro}</p>
           <div className="finger-numbers">
-            <label className="field">
-              <span>Häng (s)</span>
-              <input
-                type="number"
-                min={3}
-                max={20}
-                value={config.hangSeconds}
-                onChange={(event) =>
-                  updateFingerboard({ hangSeconds: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Vila mellan reps (s)</span>
-              <input
-                type="number"
-                min={1}
-                max={15}
-                value={config.shortRestSeconds}
-                onChange={(event) =>
-                  updateFingerboard({ shortRestSeconds: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Reps</span>
-              <input
-                type="number"
-                min={2}
-                max={12}
-                value={config.reps}
-                onChange={(event) =>
-                  updateFingerboard({ reps: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Vila mellan set (s)</span>
-              <input
-                type="number"
-                min={30}
-                max={600}
-                step={15}
-                value={config.setRestSeconds}
-                onChange={(event) =>
-                  updateFingerboard({ setRestSeconds: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Set</span>
-              <input
-                type="number"
-                min={1}
-                max={8}
-                value={config.sets}
-                onChange={(event) =>
-                  updateFingerboard({ sets: Number(event.target.value) })
-                }
-              />
-            </label>
+            <NumberField
+              label="Häng (s)"
+              min={3}
+              max={20}
+              value={config.hangSeconds}
+              onChange={(hangSeconds) => updateFingerboard({ hangSeconds })}
+            />
+            <NumberField
+              label="Vila mellan reps (s)"
+              min={1}
+              max={15}
+              value={config.shortRestSeconds}
+              onChange={(shortRestSeconds) => updateFingerboard({ shortRestSeconds })}
+            />
+            <NumberField
+              label="Reps"
+              min={2}
+              max={12}
+              value={config.reps}
+              onChange={(reps) => updateFingerboard({ reps })}
+            />
+            <NumberField
+              label="Vila mellan set (s)"
+              min={30}
+              max={600}
+              step={15}
+              value={config.setRestSeconds}
+              onChange={(setRestSeconds) => updateFingerboard({ setRestSeconds })}
+            />
+            <NumberField
+              label="Set"
+              min={1}
+              max={8}
+              value={config.sets}
+              onChange={(sets) => updateFingerboard({ sets })}
+            />
           </div>
 
           <div className="field">

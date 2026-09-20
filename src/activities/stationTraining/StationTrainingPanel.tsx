@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { FitScale } from '../../components/FitScale'
+import { NumberField } from '../../components/NumberField'
 import { useGym } from '../../gym/GymContext'
 import { useNow } from '../../hooks/useNow'
 import {
@@ -94,32 +95,20 @@ export function StationTrainingPanel({ variant }: StationTrainingPanelProps) {
     <div className={`stations stations-${variant} stations-${session.phase}`}>
       {variant === 'trainer' && !running ? (
         <form className="density-settings" onSubmit={(event) => event.preventDefault()}>
-          <label className="field">
-            <span>Stationstid (minuter)</span>
-            <input
-              type="number"
-              min={0}
-              max={60}
-              step={1}
-              value={config.stationMinutes}
-              onChange={(event) =>
-                updateStationTraining({ stationMinutes: Number(event.target.value) })
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Stationstid (sekunder)</span>
-            <input
-              type="number"
-              min={0}
-              max={59}
-              step={1}
-              value={config.stationSeconds}
-              onChange={(event) =>
-                updateStationTraining({ stationSeconds: Number(event.target.value) })
-              }
-            />
-          </label>
+          <NumberField
+            label="Stationstid (minuter)"
+            min={0}
+            max={60}
+            value={config.stationMinutes}
+            onChange={(stationMinutes) => updateStationTraining({ stationMinutes })}
+          />
+          <NumberField
+            label="Stationstid (sekunder)"
+            min={0}
+            max={59}
+            value={config.stationSeconds}
+            onChange={(stationSeconds) => updateStationTraining({ stationSeconds })}
+          />
           <div className="field">
             <span>Signal vid byte</span>
             <div className="density-signal-row">
