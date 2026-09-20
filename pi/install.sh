@@ -3,11 +3,28 @@ set -euo pipefail
 
 REPO_URL="${VVK_REPO_URL:-https://github.com/VKC276/ClimbTraining.git}"
 DEST="${VVK_REPO_DIR:-$HOME/ClimbTraining}"
+DO_UPGRADE=0
 
 if [[ "$(id -u)" -eq 0 ]]; then
   echo "Kör installern som den vanliga Pi-användaren, inte som root."
   exit 1
 fi
+
+for arg in "$@"; do
+  case "$arg" in
+    --upgrade) DO_UPGRADE=1 ;;
+    -h | --help)
+      echo "Användning: install.sh [--upgrade]"
+      echo "  --upgrade  kör apt full-upgrade innan paketen installeras"
+      exit 0
+      ;;
+    *)
+      echo "Okänd flagga: $arg"
+      echo "Användning: install.sh [--upgrade]"
+      exit 1
+      ;;
+  esac
+done
 
 sudo_run() {
   if sudo -n true 2>/dev/null; then
@@ -17,13 +34,54 @@ sudo_run() {
   sudo "$@"
 }
 
+current_lang() {
+  local line=""
+  if [[ -r /etc/default/locale ]]; then
+    line="$(grep -E '^LANG=' /etc/default/locale | tail -1 || true)"
+    line="${line#LANG=}"
+    line="${line#\"}"
+    line="${line%\"}"
+    line="${line#\'}"
+    line="${line%\'}"
+  fi
+  if [[ -z "$line" ]]; then
+    line="${LANG:-}"
+  fi
+  printf '%s' "$line"
+}
+
+locale_is_swedish() {
+  local lang
+  lang="$(current_lang)"
+  [[ "$lang" == "sv_SE.UTF-8" || "$lang" == "sv_SE.utf8" ]]
+}
+
+ensure_swedish_locale() {
+  if locale_is_swedish; then
+    echo "Locale är redan svenska ($(current_lang)), hoppar över."
+    return
+  fi
+  echo "Sätter locale till sv_SE.UTF-8..."
+  if command -v raspi-config >/dev/null; then
+    sudo_run raspi-config nonint do_change_locale sv_SE.UTF-8 || true
+  fi
+  if [[ -f /etc/locale.gen ]] && ! grep -qE '^sv_SE\.UTF-8' /etc/locale.gen; then
+    echo "sv_SE.UTF-8 UTF-8" | sudo_run tee -a /etc/locale.gen >/dev/null || true
+  fi
+  sudo_run locale-gen sv_SE.UTF-8 >/dev/null 2>&1 || sudo_run locale-gen || true
+  sudo_run update-locale LANG=sv_SE.UTF-8 LC_TIME=sv_SE.UTF-8 LANGUAGE=sv_SE:sv || true
+}
+
 echo "Installerar gymskärmen..."
 export DEBIAN_FRONTEND=noninteractive
 sudo_run apt-get update -y
-sudo_run apt-get \
-  -o Dpkg::Options::=--force-confdef \
-  -o Dpkg::Options::=--force-confold \
-  full-upgrade -y
+if [[ "$DO_UPGRADE" -eq 1 ]]; then
+  echo "Kör apt full-upgrade..."
+  sudo_run apt-get \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold \
+    full-upgrade -y
+fi
 sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales wtype
 sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
@@ -60,17 +118,13 @@ if command -v raspi-config >/dev/null; then
   sudo_run raspi-config nonint do_boot_behaviour B4 || true
   sudo_run raspi-config nonint do_blanking 1 || true
   sudo_run raspi-config nonint do_change_timezone Europe/Stockholm || true
-  sudo_run raspi-config nonint do_change_locale sv_SE.UTF-8 || true
   sudo_run raspi-config nonint do_configure_keyboard se || true
   sudo_run raspi-config nonint do_wifi_country SE || true
 fi
-if [[ -f /etc/locale.gen ]] && ! grep -qE '^sv_SE\.UTF-8' /etc/locale.gen; then
-  echo "sv_SE.UTF-8 UTF-8" | sudo_run tee -a /etc/locale.gen >/dev/null || true
-fi
-sudo_run locale-gen sv_SE.UTF-8 >/dev/null 2>&1 || sudo_run locale-gen || true
-sudo_run update-locale LANG=sv_SE.UTF-8 LC_TIME=sv_SE.UTF-8 LANGUAGE=sv_SE:sv || true
+ensure_swedish_locale
 
 echo
 echo "Klart. Starta om skrivbordssessionen eller: sudo reboot"
 echo "Gammal gym-helper stoppas; den nya startar med gymskärmen."
 echo "Logg: $HOME/.vvk-gym-display.log"
+echo "Systemuppdatering: bash $DEST/pi/install.sh --upgrade"
