@@ -3,19 +3,21 @@ import { ActivityStage } from '../components/ActivityStage'
 import { IdleScreen } from '../components/IdleScreen'
 import { getActivity } from '../activities'
 import { unlockDensityAudio } from '../activities/densityCircuit/signals'
-import { SyncStatusBadge } from '../components/SyncStatusBadge'
+import { OfflineWifiBadge } from '../components/OfflineWifiBadge'
 import { useGym } from '../gym/GymContext'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useNow } from '../hooks/useNow'
 import { usePiDisplayControl } from '../hooks/usePiDisplayControl'
+import { usePiInternet } from '../hooks/usePiInternet'
 import { useWakeLock } from '../hooks/useWakeLock'
 
 export function DisplayPage() {
   const now = useNow()
-  const { snapshot, bumpInteraction, syncStatus, screenId, updateSettings } = useGym()
+  const { snapshot, bumpInteraction, screenId, updateSettings } = useGym()
   const activity = getActivity(snapshot.activityId)
   const hardware = snapshot.settings.displayHardware
   const { idleLogoSize, idleClockSize, idleScreenIdSize, clockStyle } = snapshot.settings
+  const internet = usePiInternet()
 
   useIdleTimeout()
   useWakeLock(true)
@@ -73,9 +75,7 @@ export function DisplayPage() {
           : 'display-page display-page-idle'
       }
     >
-      {syncStatus !== 'connected' ? (
-        <SyncStatusBadge className="display-sync-badge" />
-      ) : null}
+      {internet ? null : <OfflineWifiBadge />}
       {activity ? (
         <ActivityStage
           time={now}

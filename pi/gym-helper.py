@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import threading
 import time
+import urllib.error
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,6 +20,7 @@ STATE_PATH = Path.home() / ".vvk-gym-pi.json"
 LOCK = threading.Lock()
 CEC_LOCK = threading.Lock()
 SPEAK_LOCK = threading.Lock()
+INTERNET_OK = True
 SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
 SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
@@ -244,7 +247,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         with LOCK:
-            body = json.dumps({"ok": True, **STATE})
+            body = json.dumps({"ok": True, "internet": INTERNET_OK, **STATE})
         self.wfile.write(body.encode())
 
     def do_POST(self) -> None:
@@ -343,10 +346,38 @@ def scheduler() -> None:
         apply_change(previous, current)
 
 
+def internet_ok() -> bool:
+    for url in (
+        "https://1.1.1.1",
+        "https://cloudflare.com/cdn-cgi/trace",
+    ):
+        try:
+            urllib.request.urlopen(url, timeout=4)
+            return True
+        except urllib.error.HTTPError:
+            return True
+        except (urllib.error.URLError, OSError, TimeoutError):
+            continue
+    return False
+
+
+def watch_internet() -> None:
+    global INTERNET_OK
+    while True:
+        ok = internet_ok()
+        with LOCK:
+            previous = INTERNET_OK
+            INTERNET_OK = ok
+        if ok != previous:
+            log("internet ja" if ok else "internet nej")
+        time.sleep(8 if ok else 4)
+
+
 def main() -> None:
     load_state()
     unmute_pi_hdmi()
     threading.Thread(target=scheduler, daemon=True).start()
+    threading.Thread(target=watch_internet, daemon=True).start()
     if STATE.get("scheduleEnabled"):
         with LOCK:
             previous = dict(STATE)

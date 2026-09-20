@@ -78,11 +78,10 @@ import {
   parseRemoteSnapshot,
   saveLocalSnapshot,
 } from './storage'
-import { syncSocketUrl, type SyncStatus } from './sync'
+import { syncSocketUrl } from './sync'
 
 type GymContextValue = {
   snapshot: GymSnapshot
-  syncStatus: SyncStatus
   hasScreenAccess: boolean
   displayOnline: boolean
   screenId: string | null
@@ -122,7 +121,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const [screenId, setScreenId] = useState<string | null>(() =>
     isDisplay ? null : readTrainerScreenId(),
   )
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('connecting')
   const [displayOnline, setDisplayOnline] = useState(false)
   const snapshotRef = useRef(snapshot)
   const socketRef = useRef<WebSocket | null>(null)
@@ -147,12 +145,10 @@ export function GymProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isDisplay && (!screenId || !isScreenId(screenId))) {
-      setSyncStatus('offline')
       setDisplayOnline(false)
       return
     }
     if (isDisplay && !deviceId) {
-      setSyncStatus('offline')
       setDisplayOnline(false)
       return
     }
@@ -165,7 +161,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
     const connect = () => {
       if (stopped) return
       setDisplayOnline(false)
-      setSyncStatus('connecting')
       const socket = new WebSocket(
         isDisplay && deviceId
           ? syncSocketUrl({ role: 'display', device: deviceId })
@@ -177,7 +172,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
 
       socket.onopen = () => {
         delay = 600
-        setSyncStatus('connected')
         heartbeat = window.setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) socket.send('ping')
         }, 20000)
@@ -221,7 +215,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
       socket.onclose = () => {
         window.clearTimeout(seedTimer)
         window.clearInterval(heartbeat)
-        setSyncStatus('offline')
         setDisplayOnline(false)
         socketRef.current = null
         if (stopped) return
@@ -572,7 +565,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       snapshot,
-      syncStatus,
       displayOnline,
       hasScreenAccess: Boolean(
         screenId && isScreenId(screenId) && (isDisplay || displayOnline),
@@ -605,7 +597,6 @@ export function GymProvider({ children }: { children: ReactNode }) {
     }),
     [
       snapshot,
-      syncStatus,
       displayOnline,
       isDisplay,
       screenId,

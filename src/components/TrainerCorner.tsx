@@ -1,5 +1,4 @@
 import { useGym } from '../gym/GymContext'
-import { SyncStatusBadge } from './SyncStatusBadge'
 
 export function TrainerCorner() {
   const { snapshot, updateSettings } = useGym()
@@ -32,7 +31,6 @@ export function TrainerCorner() {
           />
         </svg>
       </button>
-      <SyncStatusBadge />
     </div>
   )
 }
