@@ -46,10 +46,39 @@ export class ScreenRegistry extends DurableObject {
   }
 }
 
+type SocketRole = 'display' | 'trainer'
+
 export class GymRoom extends DurableObject {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+  }
+
+  private roleOf(ws: WebSocket): SocketRole | null {
+    const att = ws.deserializeAttachment() as { role?: SocketRole } | null
+    return att?.role === 'display' || att?.role === 'trainer' ? att.role : null
+  }
+
+  private displayIsOnline(except?: WebSocket) {
+    return this.ctx.getWebSockets().some((ws) => {
+      if (except && ws === except) return false
+      return this.roleOf(ws) === 'display'
+    })
+  }
+
+  private broadcastPresence(except?: WebSocket) {
+    const payload = JSON.stringify({
+      type: 'presence',
+      displayOnline: this.displayIsOnline(except),
+    })
+    for (const peer of this.ctx.getWebSockets()) {
+      if (except && peer === except) continue
+      try {
+        peer.send(payload)
+      } catch {
+        /* socket already closing */
+      }
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -58,16 +87,21 @@ export class GymRoom extends DurableObject {
     }
 
     const publicScreen = request.headers.get('X-Public-Screen')
+    const role: SocketRole =
+      publicScreen && isScreenId(publicScreen) ? 'display' : 'trainer'
     const pair = new WebSocketPair()
     const [client, server] = Object.values(pair)
     this.ctx.acceptWebSocket(server)
+    server.serializeAttachment({ role })
 
-    if (publicScreen && isScreenId(publicScreen)) {
+    if (role === 'display' && publicScreen) {
       server.send(JSON.stringify({ type: 'screen', id: publicScreen }))
     }
 
     const last = await this.ctx.storage.get<string>('last')
     if (last) server.send(last)
+
+    this.broadcastPresence()
 
     return new Response(null, { status: 101, webSocket: client })
   }
@@ -75,6 +109,12 @@ export class GymRoom extends DurableObject {
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     const text = typeof message === 'string' ? message : new TextDecoder().decode(message)
     if (!text.startsWith('{')) return
+    try {
+      const payload = JSON.parse(text) as { type?: string }
+      if (payload.type === 'presence' || payload.type === 'screen') return
+    } catch {
+      return
+    }
     await this.ctx.storage.put('last', text)
     for (const peer of this.ctx.getWebSockets()) {
       if (peer !== ws && peer.readyState === WebSocket.OPEN) peer.send(text)
@@ -82,6 +122,7 @@ export class GymRoom extends DurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
+    this.broadcastPresence(ws)
     ws.close(code, reason)
   }
 }

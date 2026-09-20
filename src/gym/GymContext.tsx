@@ -84,6 +84,7 @@ type GymContextValue = {
   snapshot: GymSnapshot
   syncStatus: SyncStatus
   hasScreenAccess: boolean
+  displayOnline: boolean
   screenId: string | null
   pairScreen: (id: string) => void
   unpairScreen: () => void
@@ -122,6 +123,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
     isDisplay ? null : readTrainerScreenId(),
   )
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('connecting')
+  const [displayOnline, setDisplayOnline] = useState(false)
   const snapshotRef = useRef(snapshot)
   const socketRef = useRef<WebSocket | null>(null)
   const applyingRemote = useRef(false)
@@ -140,15 +142,18 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const unpairScreen = useCallback(() => {
     clearTrainerScreenId()
     setScreenId(null)
+    setDisplayOnline(false)
   }, [])
 
   useEffect(() => {
     if (!isDisplay && (!screenId || !isScreenId(screenId))) {
       setSyncStatus('offline')
+      setDisplayOnline(false)
       return
     }
     if (isDisplay && !deviceId) {
       setSyncStatus('offline')
+      setDisplayOnline(false)
       return
     }
 
@@ -159,6 +164,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
 
     const connect = () => {
       if (stopped) return
+      setDisplayOnline(false)
       setSyncStatus('connecting')
       const socket = new WebSocket(
         isDisplay && deviceId
@@ -185,9 +191,17 @@ export function GymProvider({ children }: { children: ReactNode }) {
       socket.onmessage = (event) => {
         if (typeof event.data !== 'string' || !event.data.startsWith('{')) return
         try {
-          const payload = JSON.parse(event.data) as { type?: string; id?: string }
+          const payload = JSON.parse(event.data) as {
+            type?: string
+            id?: string
+            displayOnline?: boolean
+          }
           if (payload.type === 'screen' && typeof payload.id === 'string' && isScreenId(payload.id)) {
             setScreenId(payload.id)
+            return
+          }
+          if (payload.type === 'presence') {
+            setDisplayOnline(payload.displayOnline === true)
             return
           }
         } catch {
@@ -208,6 +222,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
         window.clearTimeout(seedTimer)
         window.clearInterval(heartbeat)
         setSyncStatus('offline')
+        setDisplayOnline(false)
         socketRef.current = null
         if (stopped) return
         retryTimer = window.setTimeout(connect, delay)
@@ -558,7 +573,10 @@ export function GymProvider({ children }: { children: ReactNode }) {
     () => ({
       snapshot,
       syncStatus,
-      hasScreenAccess: Boolean(screenId && isScreenId(screenId)),
+      displayOnline,
+      hasScreenAccess: Boolean(
+        screenId && isScreenId(screenId) && (isDisplay || displayOnline),
+      ),
       screenId,
       pairScreen,
       unpairScreen,
@@ -588,6 +606,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
     [
       snapshot,
       syncStatus,
+      displayOnline,
+      isDisplay,
       screenId,
       pairScreen,
       unpairScreen,
