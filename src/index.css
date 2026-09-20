@@ -397,6 +397,7 @@ html.display-no-cursor *,
 .activity-body-fill {
   max-width: none;
   width: 100%;
+  min-width: 0;
   align-content: stretch;
   min-height: 0;
 }
@@ -539,12 +540,15 @@ html.display-no-cursor *,
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .density {
   display: grid;
   gap: 1.25rem;
   width: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -556,14 +560,17 @@ html.display-no-cursor *,
 .density-settings {
   display: grid;
   gap: 1rem;
+  width: 100%;
   max-width: 36rem;
+  min-width: 0;
 }
 
 .density-signal-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.6rem;
   align-items: stretch;
+  min-width: 0;
 }
 
 .density-stage {
@@ -1512,6 +1519,7 @@ legend {
 .field {
   display: grid;
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .field span {
@@ -1519,7 +1527,11 @@ legend {
 }
 
 select,
-.field input {
+.field input,
+.number-field-trigger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 48px;
   padding: 0 0.9rem;
   border-radius: 12px;
@@ -1527,6 +1539,103 @@ select,
   background: var(--bg-elev);
   color: var(--chalk);
   font: inherit;
+}
+
+.number-field-trigger {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.number-pad-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-items: end;
+  justify-items: stretch;
+  background: rgba(8, 7, 6, 0.64);
+}
+
+.number-pad {
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 1.15rem 1.15rem max(1.15rem, env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+}
+
+.number-pad-value {
+  margin: 0;
+  min-height: 2.6rem;
+  font-family: var(--display);
+  font-size: 2.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.number-pad-range {
+  margin: -0.25rem 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.number-pad-keys {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.number-pad-key {
+  min-height: 56px;
+  padding: 0;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--chalk);
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.number-pad-key:active {
+  background: var(--hold-soft);
+  border-color: var(--hold);
+}
+
+.number-pad-action {
+  color: var(--muted);
+  font-size: 1.3rem;
+}
+
+.number-pad-ok {
+  background: var(--hold);
+  border-color: transparent;
+  color: #1a0d04;
+  font-size: 1.05rem;
+}
+
+.number-pad-cancel {
+  width: 100%;
+}
+
+@media (min-width: 720px) {
+  .number-pad-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .number-pad {
+    border-radius: 24px;
+  }
 }
 
 .field input[type='range'] {
@@ -1664,6 +1773,7 @@ select,
   display: grid;
   gap: 1.25rem;
   width: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -1675,7 +1785,9 @@ select,
 .finger-settings {
   display: grid;
   gap: 1rem;
+  width: 100%;
   max-width: 40rem;
+  min-width: 0;
 }
 
 .finger-hint,
@@ -1778,6 +1890,7 @@ select,
   display: grid;
   gap: 1.25rem;
   width: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -1789,7 +1902,9 @@ select,
 .timer-settings {
   display: grid;
   gap: 1rem;
+  width: 100%;
   max-width: 40rem;
+  min-width: 0;
 }
 
 .timer-hint {
@@ -1802,6 +1917,7 @@ select,
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .timer-preset {
@@ -1823,8 +1939,9 @@ select,
 
 .timer-numbers {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .timer-stage {
