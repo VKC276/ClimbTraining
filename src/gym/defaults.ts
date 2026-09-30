@@ -53,7 +53,7 @@ export const defaultSettings: GymSettings = {
   doubleRule: defaultDoubleRuleConfig,
 }
 
-export function defaultSnapshot(now = Date.now()): GymSnapshot {
+export function defaultSnapshot(now = 0): GymSnapshot {
   return {
     activityId: null,
     lastInteractionAt: now,

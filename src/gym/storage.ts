@@ -188,3 +188,10 @@ export function saveLocalSnapshot(snapshot: GymSnapshot) {
   localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot))
   localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(snapshot.settings))
 }
+
+export function settingsMatchDefaults(settings: GymSettings) {
+  return (
+    JSON.stringify(normalizeSettings(settings)) ===
+    JSON.stringify(normalizeSettings(defaultSettings))
+  )
+}

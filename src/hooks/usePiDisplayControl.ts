@@ -21,6 +21,7 @@ async function pushToPi(hardware: DisplayHardware) {
 export function usePiDisplayControl(
   hardware: DisplayHardware,
   updateHdmiOn: (hdmiOn: boolean) => void,
+  enabled = true,
 ) {
   const lastSent = useRef('')
   const lastHdmi = useRef(hardware.hdmiOn)
@@ -32,6 +33,7 @@ export function usePiDisplayControl(
   updateHdmiOnRef.current = updateHdmiOn
 
   useEffect(() => {
+    if (!enabled) return
     const payload = JSON.stringify(hardware)
     if (payload === lastSent.current) return
     const powerChanged =
@@ -50,20 +52,20 @@ export function usePiDisplayControl(
       powerChanged ? 0 : 500,
     )
     return () => window.clearTimeout(timer)
-  }, [hardware])
+  }, [hardware, enabled])
 
   useEffect(() => {
-    if (hardware.mode !== 'schedule') return
+    if (!enabled || hardware.mode !== 'schedule') return
     const shouldOn = screenScheduledOn(
       new Date(),
       hardware.onTime,
       hardware.offTime,
     )
     if (shouldOn !== hdmiOnRef.current) updateHdmiOnRef.current(shouldOn)
-  }, [hardware.mode, hardware.onTime, hardware.offTime])
+  }, [enabled, hardware.mode, hardware.onTime, hardware.offTime])
 
   useEffect(() => {
-    if (hardware.mode !== 'schedule') return
+    if (!enabled || hardware.mode !== 'schedule') return
 
     const tick = () => {
       const now = new Date()
@@ -84,5 +86,6 @@ export function usePiDisplayControl(
     hardware.offTime,
     hardware.hdmiOn,
     updateHdmiOn,
+    enabled,
   ])
 }

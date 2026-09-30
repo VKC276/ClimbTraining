@@ -13,7 +13,7 @@ import { useWakeLock } from '../hooks/useWakeLock'
 
 export function DisplayPage() {
   const now = useNow()
-  const { snapshot, bumpInteraction, screenId, updateSettings } = useGym()
+  const { snapshot, bumpInteraction, screenId, updateSettings, syncReady } = useGym()
   const activity = getActivity(snapshot.activityId)
   const hardware = snapshot.settings.displayHardware
   const { idleLogoSize, idleClockSize, idleScreenIdSize, clockStyle } = snapshot.settings
@@ -42,6 +42,7 @@ export function DisplayPage() {
       },
       [hardware, updateSettings],
     ),
+    syncReady,
   )
 
   useEffect(() => {

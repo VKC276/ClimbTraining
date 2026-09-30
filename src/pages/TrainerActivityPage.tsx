@@ -15,7 +15,7 @@ export function TrainerActivityPage() {
 
   useEffect(() => {
     if (!activity) return
-    startActivity(activity.id)
+    startActivity(activity.id, { preserveLive: true })
   }, [activity, startActivity])
 
   useEffect(() => {

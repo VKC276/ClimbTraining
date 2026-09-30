@@ -72,6 +72,7 @@ import {
   readTrainerScreenId,
   saveTrainerScreenId,
 } from './screenId'
+import { hasLiveSession, shouldAdoptRemoteSnapshot, shouldSeedRoom } from './liveSession'
 import {
   loadLocalSnapshot,
   normalizeSettings,
@@ -87,8 +88,9 @@ type GymContextValue = {
   screenId: string | null
   pairScreen: (id: string) => void
   unpairScreen: () => void
-  startActivity: (activityId: string) => void
+  startActivity: (activityId: string, options?: { preserveLive?: boolean }) => void
   endActivity: () => void
+  syncReady: boolean
   bumpInteraction: () => void
   updateSettings: (patch: Partial<GymSettings>) => void
   updateCatchHold: (patch: Partial<CatchHoldConfig>) => void
@@ -122,9 +124,14 @@ export function GymProvider({ children }: { children: ReactNode }) {
     isDisplay ? null : readTrainerScreenId(),
   )
   const [displayOnline, setDisplayOnline] = useState(false)
+  const [syncReady, setSyncReady] = useState(false)
   const snapshotRef = useRef(snapshot)
+  const loadedSnapshotRef = useRef(initial)
   const socketRef = useRef<WebSocket | null>(null)
   const applyingRemote = useRef(false)
+  const syncedRef = useRef(false)
+  const mutatedBeforeSync = useRef(false)
+  const preferLiveArmed = useRef(true)
 
   useEffect(() => {
     snapshotRef.current = snapshot
@@ -146,20 +153,49 @@ export function GymProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isDisplay && (!screenId || !isScreenId(screenId))) {
       setDisplayOnline(false)
+      syncedRef.current = true
+      setSyncReady(true)
       return
     }
     if (isDisplay && !deviceId) {
       setDisplayOnline(false)
+      syncedRef.current = true
+      setSyncReady(true)
       return
     }
 
     let stopped = false
     let retryTimer = 0
     let seedTimer = 0
+    let localReadyTimer = 0
     let delay = 600
+    preferLiveArmed.current = true
 
-    const connect = () => {
+    localReadyTimer = window.setTimeout(() => {
+      if (stopped || syncedRef.current) return
+      syncedRef.current = true
+      setSyncReady(true)
+    }, isDisplay ? 2000 : 5000)
+
+    const publish = () => {
+      const socket = socketRef.current
+      if (!applyingRemote.current && socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(snapshotRef.current))
+      }
+    }
+
+    const finishSync = () => {
+      mutatedBeforeSync.current = false
+      preferLiveArmed.current = false
+      if (stopped || syncedRef.current) return
+      syncedRef.current = true
+      setSyncReady(true)
+    }
+
+    const connect = (initialAttempt: boolean) => {
       if (stopped) return
+      syncedRef.current = false
+      if (initialAttempt) setSyncReady(false)
       setDisplayOnline(false)
       const socket = new WebSocket(
         isDisplay && deviceId
@@ -170,15 +206,34 @@ export function GymProvider({ children }: { children: ReactNode }) {
       let gotRemote = false
       let heartbeat = 0
 
+      const applySnapshot = (next: GymSnapshot) => {
+        applyingRemote.current = true
+        snapshotRef.current = next
+        setSnapshot(next)
+        saveLocalSnapshot(next)
+        applyingRemote.current = false
+      }
+
       socket.onopen = () => {
         delay = 600
         heartbeat = window.setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) socket.send('ping')
         }, 20000)
         seedTimer = window.setTimeout(() => {
-          if (!gotRemote && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(snapshotRef.current))
+          if (stopped || gotRemote || socket.readyState !== WebSocket.OPEN) return
+          const loaded = loadedSnapshotRef.current
+          const current = snapshotRef.current
+          if (
+            shouldSeedRoom({
+              isDisplay,
+              mutated: mutatedBeforeSync.current,
+              loaded,
+              current,
+            })
+          ) {
+            publish()
           }
+          finishSync()
         }, 400)
       }
 
@@ -203,13 +258,28 @@ export function GymProvider({ children }: { children: ReactNode }) {
         }
         const remote = parseRemoteSnapshot(event.data)
         if (!remote) return
+        const local = snapshotRef.current
+        const firstRemote = !gotRemote
         gotRemote = true
-        if (remote.lastInteractionAt < snapshotRef.current.lastInteractionAt) return
-        applyingRemote.current = true
-        snapshotRef.current = remote
-        setSnapshot(remote)
-        saveLocalSnapshot(remote)
-        applyingRemote.current = false
+        const decision = shouldAdoptRemoteSnapshot({
+          isDisplay,
+          local,
+          remote,
+          loaded: loadedSnapshotRef.current,
+          firstRemote,
+          mutated: mutatedBeforeSync.current,
+          preferLiveArmed: preferLiveArmed.current,
+        })
+        if (decision === 'remote-live') {
+          const rescued = { ...remote, lastInteractionAt: Date.now() }
+          applySnapshot(rescued)
+          publish()
+        } else if (decision === 'remote') {
+          applySnapshot(remote)
+        } else if (firstRemote && mutatedBeforeSync.current) {
+          publish()
+        }
+        finishSync()
       }
 
       socket.onclose = () => {
@@ -218,7 +288,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
         setDisplayOnline(false)
         socketRef.current = null
         if (stopped) return
-        retryTimer = window.setTimeout(connect, delay)
+        retryTimer = window.setTimeout(() => connect(false), delay)
         delay = Math.min(8000, delay * 2)
       }
 
@@ -227,23 +297,26 @@ export function GymProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    connect()
+    connect(true)
 
     return () => {
       stopped = true
       window.clearTimeout(retryTimer)
       window.clearTimeout(seedTimer)
+      window.clearTimeout(localReadyTimer)
       socketRef.current?.close()
       socketRef.current = null
     }
   }, [isDisplay, deviceId, isDisplay ? null : screenId])
 
   const commit = useCallback((next: GymSnapshot) => {
+    if (!syncedRef.current) mutatedBeforeSync.current = true
     snapshotRef.current = next
     setSnapshot(next)
     saveLocalSnapshot(next)
+    if (!syncedRef.current || applyingRemote.current) return
     const socket = socketRef.current
-    if (!applyingRemote.current && socket?.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(next))
     }
   }, [])
@@ -253,9 +326,18 @@ export function GymProvider({ children }: { children: ReactNode }) {
   }, [commit])
 
   const startActivity = useCallback(
-    (activityId: string) => {
+    (activityId: string, options?: { preserveLive?: boolean }) => {
+      const current = snapshotRef.current
+      if (
+        options?.preserveLive &&
+        current.activityId === activityId &&
+        hasLiveSession(current)
+      ) {
+        commit({ ...current, lastInteractionAt: Date.now() })
+        return
+      }
       commit({
-        ...snapshotRef.current,
+        ...current,
         activityId,
         lastInteractionAt: Date.now(),
         catchHoldSession: { ...idleCatchHoldSession },
@@ -565,6 +647,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       snapshot,
+      syncReady,
       displayOnline,
       hasScreenAccess: Boolean(
         screenId && isScreenId(screenId) && (isDisplay || displayOnline),
@@ -597,6 +680,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
     }),
     [
       snapshot,
+      syncReady,
       displayOnline,
       isDisplay,
       screenId,

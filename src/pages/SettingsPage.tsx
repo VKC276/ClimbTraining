@@ -86,7 +86,8 @@ function LockedSlider({
 }
 
 export function SettingsPage() {
-  const { snapshot, updateSettings, screenId, unpairScreen } = useGym()
+  const { snapshot, updateSettings, screenId, unpairScreen, syncReady, displayOnline } =
+    useGym()
   const {
     clockStyle,
     idleTimeoutMinutes,
@@ -113,6 +114,27 @@ export function SettingsPage() {
       hdmiCommand,
       hdmiCommandId: Date.now(),
     })
+  }
+
+  if (!syncReady) {
+    return (
+      <main className="trainer-page settings-page">
+        <header>
+          <p className="eyebrow">Kontrollpanel</p>
+          <h1>Inställningar</h1>
+          <p className="lede">Hämtar senaste sparade värden från gymskärmen…</p>
+          <TrainerCorner />
+        </header>
+        <p className="settings-note" role="status">
+          {displayOnline ? `Kopplad till skärm ${screenId}.` : 'Väntar på synk…'}
+        </p>
+        <p className="trainer-footer">
+          <Link className="button" to="/">
+            Tillbaka till menyn
+          </Link>
+        </p>
+      </main>
+    )
   }
 
   return (
