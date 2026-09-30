@@ -53,17 +53,17 @@ export function usePiDisplayControl(
   }, [hardware])
 
   useEffect(() => {
-    if (!hardware.scheduleEnabled) return
+    if (hardware.mode !== 'schedule') return
     const shouldOn = screenScheduledOn(
       new Date(),
       hardware.onTime,
       hardware.offTime,
     )
     if (shouldOn !== hdmiOnRef.current) updateHdmiOnRef.current(shouldOn)
-  }, [hardware.scheduleEnabled, hardware.onTime, hardware.offTime])
+  }, [hardware.mode, hardware.onTime, hardware.offTime])
 
   useEffect(() => {
-    if (!hardware.scheduleEnabled) return
+    if (hardware.mode !== 'schedule') return
 
     const tick = () => {
       const now = new Date()
@@ -79,7 +79,7 @@ export function usePiDisplayControl(
     const id = window.setInterval(tick, 5000)
     return () => window.clearInterval(id)
   }, [
-    hardware.scheduleEnabled,
+    hardware.mode,
     hardware.onTime,
     hardware.offTime,
     hardware.hdmiOn,

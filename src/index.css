@@ -122,6 +122,12 @@ a {
   color: #04150a;
 }
 
+.button:disabled,
+.button-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .button-pause {
   background: #eab308;
   border-color: transparent;
@@ -1449,6 +1455,11 @@ html.display-no-cursor *,
 .trainer-screen-btn svg {
   width: 1.35rem;
   height: 1.35rem;
+}
+
+.trainer-screen-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 @keyframes sync-pulse {

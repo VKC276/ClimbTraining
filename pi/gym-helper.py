@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""HDMI-CEC via cec-client, samma anrop som det fungerande styrscriptet."""
+"""HDMI-CEC via cec-client, schema/radar-läge och USB-radar (ESP32-C3)."""
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import shutil
@@ -24,13 +25,24 @@ INTERNET_OK = True
 SOUND_DIR = Path(__file__).resolve().parent / "sounds" / "catch-hold"
 SOUND_EXTS = (".wav", ".mp3", ".ogg", ".m4a", ".flac")
 TV_ADDRESS = "0"
+
 STATE = {
     "hdmiOn": True,
     "hdmiCommand": None,
     "hdmiCommandId": 0,
-    "scheduleEnabled": False,
+    "mode": "off",  # off | schedule | radar
     "onTime": "07:00",
     "offTime": "22:00",
+    "radarIdleMinutes": 120,
+}
+
+# Radar-runtime (inte persistat)
+RADAR = {
+    "connected": False,
+    "state": "unknown",
+    "dist": None,
+    "lastMotionAt": 0.0,
+    "lastSeq": None,
 }
 
 
@@ -142,7 +154,15 @@ def restore_hdmi_output() -> None:
     log("hdmi restore misslyckades")
 
 
+def cec_allowed() -> bool:
+    with LOCK:
+        return STATE.get("mode") != "off"
+
+
 def send_power(on: bool) -> None:
+    if not cec_allowed():
+        log("CEC blockerat (läge Av)")
+        return
     if on:
         send_cec_command(f"on {TV_ADDRESS}")
         # Active Source byter TV:ns ingång till Pi. På Pi 4 kan `as` fälla
@@ -152,6 +172,22 @@ def send_power(on: bool) -> None:
         unmute_pi_hdmi()
         return
     send_cec_command(f"standby {TV_ADDRESS}")
+
+
+def set_hdmi_on(want: bool, reason: str) -> None:
+    with LOCK:
+        if STATE.get("mode") == "off":
+            return
+        already = bool(STATE.get("hdmiOn")) == want
+        STATE["hdmiOn"] = want
+        STATE["hdmiCommand"] = "on" if want else "off"
+        STATE["hdmiCommandId"] = int(time.time() * 1000)
+        save_state()
+    if already:
+        log(f"hdmi redan {'på' if want else 'av'} ({reason})")
+        return
+    log(f"hdmi {'på' if want else 'av'} ({reason})")
+    send_power(want)
 
 
 def hdmi_sink() -> str:
@@ -199,6 +235,12 @@ def save_state() -> None:
     STATE_PATH.write_text(json.dumps(STATE), encoding="utf-8")
 
 
+def migrate_loaded(loaded: dict) -> None:
+    if "mode" not in loaded and "scheduleEnabled" in loaded:
+        loaded["mode"] = "schedule" if loaded.get("scheduleEnabled") else "off"
+    loaded.pop("scheduleEnabled", None)
+
+
 def load_state() -> None:
     if not STATE_PATH.exists():
         return
@@ -206,19 +248,47 @@ def load_state() -> None:
         loaded = json.loads(STATE_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return
+    if not isinstance(loaded, dict):
+        return
+    migrate_loaded(loaded)
     with LOCK:
         for key in STATE:
             if key in loaded:
                 STATE[key] = loaded[key]
+        if STATE.get("mode") not in ("off", "schedule", "radar"):
+            STATE["mode"] = "off"
+        try:
+            STATE["radarIdleMinutes"] = max(1, int(STATE.get("radarIdleMinutes") or 120))
+        except (TypeError, ValueError):
+            STATE["radarIdleMinutes"] = 120
 
 
 def apply_change(previous: dict, current: dict) -> None:
+    mode = current.get("mode")
+    if mode == "off":
+        log("läge Av — CEC tyst")
+        return
+
     command_id = int(current.get("hdmiCommandId") or 0)
     previous_id = int(previous.get("hdmiCommandId") or 0)
     command = current.get("hdmiCommand")
     if command_id != previous_id and command in ("on", "off"):
         send_power(command == "on")
-    elif bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
+        return
+
+    if previous.get("mode") != mode:
+        if mode == "schedule":
+            want = scheduled_on(current["onTime"], current["offTime"])
+            with LOCK:
+                STATE["hdmiOn"] = want
+                save_state()
+            send_power(want)
+            return
+        if mode == "radar":
+            log("läge Radar — väntar på rörelse")
+            return
+
+    if mode == "schedule" and bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
         send_power(bool(current.get("hdmiOn")))
 
 
@@ -247,7 +317,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         with LOCK:
-            body = json.dumps({"ok": True, "internet": INTERNET_OK, **STATE})
+            body = json.dumps(
+                {
+                    "ok": True,
+                    "internet": INTERNET_OK,
+                    **STATE,
+                    "radar": {
+                        "connected": RADAR["connected"],
+                        "state": RADAR["state"],
+                        "dist": RADAR["dist"],
+                        "lastMotionAt": RADAR["lastMotionAt"],
+                    },
+                }
+            )
         self.wfile.write(body.encode())
 
     def do_POST(self) -> None:
@@ -265,26 +347,49 @@ class Handler(BaseHTTPRequestHandler):
             return
         with LOCK:
             previous = dict(STATE)
+            # Migrera ev. gammal scheduleEnabled från klienten
+            if "mode" not in payload and "scheduleEnabled" in payload:
+                payload = dict(payload)
+                payload["mode"] = "schedule" if payload.get("scheduleEnabled") else "off"
             for key in (
                 "hdmiOn",
                 "hdmiCommand",
                 "hdmiCommandId",
-                "scheduleEnabled",
+                "mode",
                 "onTime",
                 "offTime",
+                "radarIdleMinutes",
             ):
                 if key in payload:
                     STATE[key] = payload[key]
+            if STATE.get("mode") not in ("off", "schedule", "radar"):
+                STATE["mode"] = "off"
+            try:
+                STATE["radarIdleMinutes"] = max(1, int(STATE.get("radarIdleMinutes") or 120))
+            except (TypeError, ValueError):
+                STATE["radarIdleMinutes"] = 120
+            manual = int(STATE.get("hdmiCommandId") or 0) != int(
+                previous.get("hdmiCommandId") or 0
+            )
+            # I radarläge äger Pi strömstatusen; klienten får bara ändra via manuellt CEC.
+            if STATE.get("mode") == "radar" and not manual:
+                STATE["hdmiOn"] = previous.get("hdmiOn")
+                STATE["hdmiCommand"] = previous.get("hdmiCommand")
+                STATE["hdmiCommandId"] = previous.get("hdmiCommandId")
+            # I Av skickas aldrig CEC — behåll senaste status utan nya kommandon.
+            if STATE.get("mode") == "off":
+                STATE["hdmiCommand"] = None
             current = dict(STATE)
             schedule_changed = (
-                previous.get("scheduleEnabled") != current.get("scheduleEnabled")
+                previous.get("mode") != current.get("mode")
                 or previous.get("onTime") != current.get("onTime")
                 or previous.get("offTime") != current.get("offTime")
             )
-            manual = int(current.get("hdmiCommandId") or 0) != int(
-                previous.get("hdmiCommandId") or 0
-            )
-            if schedule_changed and not manual and current.get("scheduleEnabled"):
+            if (
+                schedule_changed
+                and not manual
+                and current.get("mode") == "schedule"
+            ):
                 STATE["hdmiOn"] = scheduled_on(current["onTime"], current["offTime"])
                 current = dict(STATE)
             save_state()
@@ -328,7 +433,7 @@ def scheduler() -> None:
         time.sleep(5)
         with LOCK:
             state = dict(STATE)
-        if not state.get("scheduleEnabled"):
+        if state.get("mode") != "schedule":
             continue
         now = time.localtime()
         minute = f"{now.tm_hour:02d}:{now.tm_min:02d}"
@@ -373,12 +478,200 @@ def watch_internet() -> None:
         time.sleep(8 if ok else 4)
 
 
+# ---------------- Radar (USB CDC från ESP32-C3) ----------------
+
+
+def find_radar_port() -> str | None:
+    """Endast ESP32-C3-radarn — aldrig generiska ttyACM/USB-serial."""
+    if os.path.exists("/dev/radar"):
+        return "/dev/radar"
+    for path in sorted(glob.glob("/dev/serial/by-id/*Espressif*")):
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def open_radar_port(path: str):
+    import serial  # type: ignore
+
+    ser = serial.Serial()
+    ser.port = path
+    ser.baudrate = 115200
+    ser.timeout = 0.5
+    ser.write_timeout = 2
+    ser.exclusive = True
+    ser.dtr = False
+    ser.rts = False
+    ser.open()
+    return ser
+
+
+def radar_send(ser, cmd: str) -> None:
+    ser.write((cmd + "\n").encode("ascii"))
+
+
+def on_radar_motion(dist) -> None:
+    now = time.monotonic()
+    with LOCK:
+        RADAR["lastMotionAt"] = now
+        RADAR["state"] = "motion"
+        if isinstance(dist, int) and dist >= 0:
+            RADAR["dist"] = dist
+        mode = STATE.get("mode")
+        was_on = bool(STATE.get("hdmiOn"))
+    if mode != "radar":
+        return
+    log(f"radar rörelse {dist} cm — timeout nollställd")
+    if not was_on:
+        set_hdmi_on(True, "radar-motion")
+
+
+def handle_radar_msg(msg: dict) -> None:
+    event = msg.get("event")
+    seq = msg.get("seq")
+
+    with LOCK:
+        if isinstance(seq, int):
+            if event == "boot":
+                RADAR["lastSeq"] = None
+            last = RADAR["lastSeq"]
+            if last is not None and seq != last + 1:
+                log(f"radar tappade {seq - last - 1} meddelande(n) (seq {last} -> {seq})")
+            RADAR["lastSeq"] = seq
+
+    if event == "motion":
+        on_radar_motion(msg.get("dist"))
+        return
+
+    if event == "still":
+        with LOCK:
+            RADAR["state"] = "still"
+            dist = msg.get("dist")
+            if isinstance(dist, int) and dist >= 0:
+                RADAR["dist"] = dist
+        return
+
+    if event == "clear":
+        with LOCK:
+            RADAR["state"] = "clear"
+            RADAR["dist"] = None
+        return
+
+    if event == "status":
+        state = msg.get("state")
+        with LOCK:
+            previous_state = RADAR["state"]
+            if state in ("motion", "still", "clear"):
+                RADAR["state"] = state
+            dist = msg.get("dist")
+            if isinstance(dist, int) and dist >= 0:
+                RADAR["dist"] = dist
+        # Missat motion-event: synka en gång via status, men nollställ
+        # inte timeouten på varje heartbeat medan state redan är motion.
+        if state == "motion" and previous_state != "motion":
+            on_radar_motion(msg.get("dist"))
+        return
+
+    if event == "boot":
+        log(f"radar ESP startade (fw {msg.get('fw')}, orsak {msg.get('reason')})")
+
+
+def handle_radar_line(raw: bytes) -> None:
+    text = raw.decode("utf-8", errors="replace").strip()
+    if not text or not text.startswith("{"):
+        return
+    try:
+        msg = json.loads(text)
+    except json.JSONDecodeError:
+        return
+    if isinstance(msg, dict):
+        handle_radar_msg(msg)
+
+
+def radar_idle_watch() -> None:
+    """Släck skärmen när radarIdleMinutes gått sedan senaste rörelse."""
+    while True:
+        time.sleep(5)
+        with LOCK:
+            mode = STATE.get("mode")
+            idle_min = int(STATE.get("radarIdleMinutes") or 120)
+            last_motion = float(RADAR.get("lastMotionAt") or 0)
+            hdmi_on = bool(STATE.get("hdmiOn"))
+        if mode != "radar" or not hdmi_on or last_motion <= 0:
+            continue
+        elapsed = time.monotonic() - last_motion
+        if elapsed >= idle_min * 60:
+            set_hdmi_on(False, f"radar-idle {idle_min} min")
+
+
+def radar_read_loop(ser) -> None:
+    buf = b""
+    last_rx = time.monotonic()
+    last_ping = 0.0
+    ping_after = 8.0
+    dead_after = 15.0
+    while True:
+        chunk = ser.readline()
+        now = time.monotonic()
+        if chunk:
+            last_rx = now
+            buf += chunk
+            if buf.endswith(b"\n"):
+                handle_radar_line(buf)
+                buf = b""
+            elif len(buf) > 1024:
+                buf = b""
+        silent = now - last_rx
+        if silent > ping_after and now - last_ping > ping_after:
+            try:
+                radar_send(ser, "ping")
+            except OSError as error:
+                raise TimeoutError(str(error)) from error
+            last_ping = now
+        if silent > dead_after:
+            raise TimeoutError(f"radar tyst {silent:.0f} s")
+
+
+def radar_worker() -> None:
+    try:
+        import serial  # noqa: F401
+    except ImportError:
+        log("python3-serial saknas — radar inaktiv (apt install python3-serial)")
+        return
+
+    while True:
+        path = find_radar_port()
+        if not path:
+            with LOCK:
+                RADAR["connected"] = False
+                RADAR["state"] = "unknown"
+            time.sleep(3)
+            continue
+        try:
+            with open_radar_port(path) as ser:
+                with LOCK:
+                    RADAR["connected"] = True
+                    RADAR["lastSeq"] = None
+                log(f"radar ansluten {path}")
+                ser.reset_input_buffer()
+                radar_send(ser, "status")
+                radar_read_loop(ser)
+        except Exception as error:  # serial/OS/timeout
+            log(f"radar frånkopplad: {error}")
+        with LOCK:
+            RADAR["connected"] = False
+            RADAR["state"] = "unknown"
+        time.sleep(2)
+
+
 def main() -> None:
     load_state()
     unmute_pi_hdmi()
     threading.Thread(target=scheduler, daemon=True).start()
     threading.Thread(target=watch_internet, daemon=True).start()
-    if STATE.get("scheduleEnabled"):
+    threading.Thread(target=radar_worker, daemon=True).start()
+    threading.Thread(target=radar_idle_watch, daemon=True).start()
+    if STATE.get("mode") == "schedule":
         with LOCK:
             previous = dict(STATE)
             STATE["hdmiOn"] = scheduled_on(STATE["onTime"], STATE["offTime"])
@@ -386,7 +679,7 @@ def main() -> None:
             save_state()
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    log(f"vvk gym helper on http://{HOST}:{PORT}")
+    log(f"vvk gym helper on http://{HOST}:{PORT} mode={STATE.get('mode')}")
     server.serve_forever()
 
 

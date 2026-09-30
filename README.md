@@ -36,7 +36,15 @@ Uppdatera senare med samma kommando, eller `bash ~/ClimbTraining/pi/install.sh`.
 
 Logg: `cat ~/.vvk-gym-display.log`
 
-TV:n styrs med HDMI-CEC från kontrollpanelen och valfritt schema under Inställningar.
+TV:n styrs med HDMI-CEC från kontrollpanelen under Inställningar i tre lägen:
+
+- **Av** — inga CEC-kommandon (t.ex. om skärmen ska lämnas orörd)
+- **Schema** — tänd/släck enligt klockslag
+- **Radar** — tänd vid rörelse (ESP32 + LD2410D via USB); varje ny rörelse
+  nollställer timeouten, sedan släcks skärmen efter vald tid
+
+Radarfirmware och udev-regel ligger under `pi/radar/` respektive `pi/99-radar.rules`.
+Kör om `install.sh` på Pi:n efter uppdatering så `python3-serial` och udev installeras.
 
 ## Lokalt
 

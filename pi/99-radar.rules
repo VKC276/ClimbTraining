@@ -1,0 +1,8 @@
+# /etc/udev/rules.d/99-radar.rules
+# Ger ESP32-C3 (inbyggd USB serial/JTAG, 303a:1001) det fasta namnet /dev/radar.
+# ID_MM_DEVICE_IGNORE hindrar ModemManager från att skicka AT-kommandon till porten.
+#
+# Har du flera ESP32-C3 inkopplade: lägg till ATTRS{serial}=="XX:XX:XX:XX:XX:XX"
+# (hittas med: udevadm info -a -n /dev/ttyACM0 | grep serial)
+
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", SYMLINK+="radar", GROUP="dialout", MODE="0660", ENV{ID_MM_DEVICE_IGNORE}="1"

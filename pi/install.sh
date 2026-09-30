@@ -82,7 +82,7 @@ if [[ "$DO_UPGRADE" -eq 1 ]]; then
     -o Dpkg::Options::=--force-confold \
     full-upgrade -y
 fi
-sudo_run apt-get install -y git cec-utils python3 espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales wtype
+sudo_run apt-get install -y git cec-utils python3 python3-serial espeak-ng espeak-ng-data wlr-randr alsa-utils pulseaudio-utils locales wtype
 sudo_run apt-get install -y chromium || sudo_run apt-get install -y chromium-browser
 
 if [[ -d "$DEST/.git" ]]; then
@@ -104,6 +104,12 @@ chmod +x \
   "$DEST/pi/set-display-1080.sh" \
   "$DEST/pi/set-hdmi-audio.sh" \
   "$DEST/pi/chromium-fullscreen.py"
+
+if [[ -f "$DEST/pi/99-radar.rules" ]]; then
+  sudo_run cp "$DEST/pi/99-radar.rules" /etc/udev/rules.d/99-radar.rules
+  sudo_run udevadm control --reload-rules || true
+  sudo_run udevadm trigger || true
+fi
 
 "$DEST/pi/install-autostart.sh"
 "$DEST/pi/set-display-1080.sh" boot || true

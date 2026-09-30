@@ -4,7 +4,8 @@ import { fontOptions } from '../fonts'
 import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../gym/defaults'
 import { useGym } from '../gym/GymContext'
 import { TrainerCorner } from '../components/TrainerCorner'
-import type { HdmiCommand } from '../gym/displayHardware'
+import type { DisplayMode, HdmiCommand } from '../gym/displayHardware'
+import { radarIdleMinuteOptions } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
 function LockButton({
@@ -225,6 +226,7 @@ export function SettingsPage() {
             <button
               className={hdmiPressed === 'on' ? 'button' : 'button-ghost'}
               type="button"
+              disabled={displayHardware.mode === 'off'}
               onClick={() => pulseHdmi('on')}
             >
               Skärm på
@@ -232,51 +234,88 @@ export function SettingsPage() {
             <button
               className={hdmiPressed === 'off' ? 'button' : 'button-ghost'}
               type="button"
+              disabled={displayHardware.mode === 'off'}
               onClick={() => pulseHdmi('off')}
             >
               Skärm av
             </button>
           </div>
-          <label className={displayHardware.scheduleEnabled ? 'choice selected' : 'choice'}>
+
+          <label className={displayHardware.mode === 'off' ? 'choice selected' : 'choice'}>
             <input
-              type="checkbox"
-              checked={displayHardware.scheduleEnabled}
-              onChange={(event) =>
-                patchHardware({ scheduleEnabled: event.target.checked })
-              }
+              type="radio"
+              name="displayMode"
+              checked={displayHardware.mode === 'off'}
+              onChange={() => patchHardware({ mode: 'off' satisfies DisplayMode })}
+            />
+            <span>
+              <strong>Av</strong>
+              <span className="choice-hint">Inga CEC-kommandon</span>
+            </span>
+          </label>
+          <label className={displayHardware.mode === 'schedule' ? 'choice selected' : 'choice'}>
+            <input
+              type="radio"
+              name="displayMode"
+              checked={displayHardware.mode === 'schedule'}
+              onChange={() => patchHardware({ mode: 'schedule' satisfies DisplayMode })}
             />
             <span>
               <strong>Schema</strong>
+              <span className="choice-hint">Tänd och släck enligt klockslag</span>
             </span>
           </label>
-          <div className="field-row">
+          <label className={displayHardware.mode === 'radar' ? 'choice selected' : 'choice'}>
+            <input
+              type="radio"
+              name="displayMode"
+              checked={displayHardware.mode === 'radar'}
+              onChange={() => patchHardware({ mode: 'radar' satisfies DisplayMode })}
+            />
+            <span>
+              <strong>Radar</strong>
+              <span className="choice-hint">Tänd vid rörelse, släck efter timeout</span>
+            </span>
+          </label>
+
+          {displayHardware.mode === 'schedule' ? (
+            <div className="field-row">
+              <label className="field">
+                <span>På klockan</span>
+                <input
+                  type="time"
+                  value={displayHardware.onTime}
+                  onChange={(event) => patchHardware({ onTime: event.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>Av klockan</span>
+                <input
+                  type="time"
+                  value={displayHardware.offTime}
+                  onChange={(event) => patchHardware({ offTime: event.target.value })}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {displayHardware.mode === 'radar' ? (
             <label className="field">
-              <span>På klockan</span>
-              <input
-                type="time"
-                value={displayHardware.onTime}
+              <span>Skärmen aktiv i minuter efter senaste rörelse</span>
+              <select
+                value={displayHardware.radarIdleMinutes}
                 onChange={(event) =>
-                  patchHardware({
-                    onTime: event.target.value,
-                    scheduleEnabled: true,
-                  })
+                  patchHardware({ radarIdleMinutes: Number(event.target.value) })
                 }
-              />
+              >
+                {radarIdleMinuteOptions.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {minutes} minuter
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className="field">
-              <span>Av klockan</span>
-              <input
-                type="time"
-                value={displayHardware.offTime}
-                onChange={(event) =>
-                  patchHardware({
-                    offTime: event.target.value,
-                    scheduleEnabled: true,
-                  })
-                }
-              />
-            </label>
-          </div>
+          ) : null}
         </fieldset>
 
         <p className="settings-note">Kopplad till skärm {screenId}.</p>

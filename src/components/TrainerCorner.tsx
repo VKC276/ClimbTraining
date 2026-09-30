@@ -3,8 +3,10 @@ import { useGym } from '../gym/GymContext'
 export function TrainerCorner() {
   const { snapshot, updateSettings } = useGym()
   const hardware = snapshot.settings.displayHardware
+  const cecBlocked = hardware.mode === 'off'
 
   const turnScreenOn = () => {
+    if (cecBlocked) return
     updateSettings({
       displayHardware: {
         ...hardware,
@@ -21,7 +23,8 @@ export function TrainerCorner() {
         className="trainer-screen-btn"
         type="button"
         aria-label="Skärm på"
-        title="Skärm på"
+        title={cecBlocked ? 'CEC avstängt (läge Av)' : 'Skärm på'}
+        disabled={cecBlocked}
         onClick={turnScreenOn}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
