@@ -5,7 +5,7 @@ import { clampIdleSize, idleSizeMax, idleSizeMin, idleTimeoutOptions } from '../
 import { useGym } from '../gym/GymContext'
 import { TrainerCorner } from '../components/TrainerCorner'
 import type { DisplayMode, HdmiCommand } from '../gym/displayHardware'
-import { radarIdleMinuteOptions } from '../gym/displayHardware'
+import { formatRadarIdleMinutes, radarIdleMinuteOptions } from '../gym/displayHardware'
 import type { ClockStyle } from '../types'
 
 function LockButton({
@@ -301,7 +301,7 @@ export function SettingsPage() {
 
           {displayHardware.mode === 'radar' ? (
             <label className="field">
-              <span>Skärmen aktiv i minuter efter senaste rörelse</span>
+              <span>Skärmen aktiv efter senaste rörelse</span>
               <select
                 value={displayHardware.radarIdleMinutes}
                 onChange={(event) =>
@@ -310,7 +310,7 @@ export function SettingsPage() {
               >
                 {radarIdleMinuteOptions.map((minutes) => (
                   <option key={minutes} value={minutes}>
-                    {minutes} minuter
+                    {formatRadarIdleMinutes(minutes)}
                   </option>
                 ))}
               </select>

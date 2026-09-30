@@ -258,7 +258,7 @@ def load_state() -> None:
         if STATE.get("mode") not in ("off", "schedule", "radar"):
             STATE["mode"] = "off"
         try:
-            STATE["radarIdleMinutes"] = max(1, int(STATE.get("radarIdleMinutes") or 120))
+            STATE["radarIdleMinutes"] = max(1, min(8 * 60, int(STATE.get("radarIdleMinutes") or 120)))
         except (TypeError, ValueError):
             STATE["radarIdleMinutes"] = 120
 
@@ -365,7 +365,7 @@ class Handler(BaseHTTPRequestHandler):
             if STATE.get("mode") not in ("off", "schedule", "radar"):
                 STATE["mode"] = "off"
             try:
-                STATE["radarIdleMinutes"] = max(1, int(STATE.get("radarIdleMinutes") or 120))
+                STATE["radarIdleMinutes"] = max(1, min(8 * 60, int(STATE.get("radarIdleMinutes") or 120)))
             except (TypeError, ValueError):
                 STATE["radarIdleMinutes"] = 120
             manual = int(STATE.get("hdmiCommandId") or 0) != int(
