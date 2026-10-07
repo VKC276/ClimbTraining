@@ -285,7 +285,7 @@ def apply_change(previous: dict, current: dict) -> None:
             send_power(want)
             return
         if mode == "radar":
-            log("läge Radar — väntar på rörelse")
+            log("läge Radar — väntar på närvaro")
             return
 
     if mode == "schedule" and bool(previous.get("hdmiOn")) != bool(current.get("hdmiOn")):
@@ -510,20 +510,23 @@ def radar_send(ser, cmd: str) -> None:
     ser.write((cmd + "\n").encode("ascii"))
 
 
-def on_radar_motion(dist) -> None:
+def on_radar_presence(dist, state: str) -> None:
+    """Nollställ idle-timern så länge någon är i zonen, även på samma avstånd."""
     now = time.monotonic()
     with LOCK:
+        already = RADAR.get("state") in ("motion", "still")
         RADAR["lastMotionAt"] = now
-        RADAR["state"] = "motion"
+        RADAR["state"] = state
         if isinstance(dist, int) and dist >= 0:
             RADAR["dist"] = dist
         mode = STATE.get("mode")
         was_on = bool(STATE.get("hdmiOn"))
     if mode != "radar":
         return
-    log(f"radar rörelse {dist} cm — timeout nollställd")
+    if not already:
+        log(f"radar närvaro {dist} cm — timeout nollställd")
     if not was_on:
-        set_hdmi_on(True, "radar-motion")
+        set_hdmi_on(True, "radar-presence")
 
 
 def handle_radar_msg(msg: dict) -> None:
@@ -539,16 +542,8 @@ def handle_radar_msg(msg: dict) -> None:
                 log(f"radar tappade {seq - last - 1} meddelande(n) (seq {last} -> {seq})")
             RADAR["lastSeq"] = seq
 
-    if event == "motion":
-        on_radar_motion(msg.get("dist"))
-        return
-
-    if event == "still":
-        with LOCK:
-            RADAR["state"] = "still"
-            dist = msg.get("dist")
-            if isinstance(dist, int) and dist >= 0:
-                RADAR["dist"] = dist
+    if event in ("motion", "still"):
+        on_radar_presence(msg.get("dist"), event)
         return
 
     if event == "clear":
@@ -559,17 +554,13 @@ def handle_radar_msg(msg: dict) -> None:
 
     if event == "status":
         state = msg.get("state")
-        with LOCK:
-            previous_state = RADAR["state"]
-            if state in ("motion", "still", "clear"):
-                RADAR["state"] = state
-            dist = msg.get("dist")
-            if isinstance(dist, int) and dist >= 0:
-                RADAR["dist"] = dist
-        # Missat motion-event: synka en gång via status, men nollställ
-        # inte timeouten på varje heartbeat medan state redan är motion.
-        if state == "motion" and previous_state != "motion":
-            on_radar_motion(msg.get("dist"))
+        if state in ("motion", "still"):
+            on_radar_presence(msg.get("dist"), state)
+            return
+        if state == "clear":
+            with LOCK:
+                RADAR["state"] = "clear"
+                RADAR["dist"] = None
         return
 
     if event == "boot":
@@ -589,7 +580,7 @@ def handle_radar_line(raw: bytes) -> None:
 
 
 def radar_idle_watch() -> None:
-    """Släck skärmen när radarIdleMinutes gått sedan senaste rörelse."""
+    """Släck skärmen när radarIdleMinutes gått sedan senaste närvaro."""
     while True:
         time.sleep(5)
         with LOCK:

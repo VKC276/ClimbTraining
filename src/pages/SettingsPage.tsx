@@ -296,7 +296,7 @@ export function SettingsPage() {
             />
             <span>
               <strong>Radar</strong>
-              <span className="choice-hint">Tänd vid rörelse, släck efter timeout</span>
+              <span className="choice-hint">Tänd när någon är i zonen, släck efter timeout</span>
             </span>
           </label>
 
@@ -323,7 +323,7 @@ export function SettingsPage() {
 
           {displayHardware.mode === 'radar' ? (
             <label className="field">
-              <span>Skärmen aktiv efter senaste rörelse</span>
+              <span>Skärmen kvar efter att zonen blivit tom</span>
               <select
                 value={displayHardware.radarIdleMinutes}
                 onChange={(event) =>

@@ -40,8 +40,9 @@ TV:n styrs med HDMI-CEC från kontrollpanelen under Inställningar i tre lägen:
 
 - **Av** — inga CEC-kommandon (t.ex. om skärmen ska lämnas orörd)
 - **Schema** — tänd/släck enligt klockslag
-- **Radar** — tänd vid rörelse (ESP32 + LD2410D via USB); varje ny rörelse
-  nollställer timeouten, sedan släcks skärmen efter vald tid
+- **Radar** — tänd när någon är i zonen (ESP32 + LD2410D via USB). Skärmen
+  hålls tänd så länge radarn ser någon, även på samma avstånd, och släcks
+  efter vald tid utan närvaro
 
 Radarfirmware och udev-regel ligger under `pi/radar/` respektive `pi/99-radar.rules`.
 Kör om `install.sh` på Pi:n efter uppdatering så `python3-serial` och udev installeras.

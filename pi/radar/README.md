@@ -1,8 +1,8 @@
 # LD2410D-radar (ESP32-C3) för gymskärmen
 
 ESP32-C3 läser radarn och skickar JSON-rader över USB. `gym-helper.py` läser
-porten (`/dev/radar`), tänder TV:n vid rörelse i läge **Radar**, och nollställer
-timeouten vid varje ny rörelse.
+porten (`/dev/radar`), tänder TV:n när någon är i zonen i läge **Radar**, och
+nollställer timeouten så länge tillståndet är `still` eller `motion`.
 
 ## Firmware
 
@@ -40,4 +40,4 @@ curl -s http://127.0.0.1:8743/health | python3 -m json.tool
 | --- | --- |
 | Av | Inga CEC-kommandon |
 | Schema | På/av enligt klockslag |
-| Radar | På vid rörelse, av efter X minuter utan ny rörelse |
+| Radar | På när någon är i zonen, av efter X minuter utan närvaro |
