@@ -47,7 +47,7 @@ wait_wayland() {
 }
 
 max_pi_audio() {
-  "$SCRIPT_DIR/set-hdmi-audio.sh" >/dev/null 2>&1 || true
+  bash "$SCRIPT_DIR/set-hdmi-audio.sh" >/dev/null 2>&1 || true
 }
 
 clear_chromium_crash() {
@@ -122,7 +122,7 @@ export VVK_CDP_PORT="$CDP_PORT"
 
 log "startar gymskärm"
 wait_wayland
-"$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
+bash "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
 max_pi_audio
 ensure_helper
 
@@ -142,7 +142,7 @@ go_fullscreen() {
 
 while true; do
   rotate_log
-  "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
+  bash "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
   max_pi_audio
   ensure_helper
   if ! chrome_running; then

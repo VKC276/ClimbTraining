@@ -20,7 +20,8 @@ path.write_text(
             "[Desktop Entry]",
             "Type=Application",
             "Name=VVK gymskärm",
-            f"Exec={script}",
+            # bash: skriptet ska starta även om git-checkout tappat +x
+            f"Exec=bash {script}",
             "X-GNOME-Autostart-enabled=true",
             "",
         ]
@@ -48,7 +49,7 @@ touch "$HOME/.config/labwc/autostart"
 python3 - "$HOME/.config/labwc/autostart" "$DISPLAY_SH" <<'PY'
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
-display = sys.argv[2] + " &"
+display = f"bash {sys.argv[2]} &"
 text = path.read_text(encoding="utf-8")
 kept = [
     row
