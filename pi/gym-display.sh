@@ -6,10 +6,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
 FULLSCREEN="$SCRIPT_DIR/chromium-fullscreen.py"
 LOG="${HOME}/.vvk-gym-display.log"
+LOG_MAX_BYTES=1048576
 PROFILE="${HOME}/.config/vvk-gym-chromium"
 CDP_PORT="${VVK_CDP_PORT:-9222}"
 
+# Chromium och helpern skriver till samma fil. Kapa den på plats så öppna
+# filhandtag fortsätter skriva, och behåll bara den senaste halvan.
+rotate_log() {
+  local size
+  [[ -f "$LOG" ]] || return 0
+  size=$(stat -c%s "$LOG" 2>/dev/null || echo 0)
+  if (( size <= LOG_MAX_BYTES )); then
+    return 0
+  fi
+  tail -c $((LOG_MAX_BYTES / 2)) "$LOG" > "${LOG}.tmp"
+  cat "${LOG}.tmp" > "$LOG"
+  rm -f "${LOG}.tmp"
+}
+
 log() {
+  rotate_log
   echo "$(date '+%F %T') $*" | tee -a "$LOG"
 }
 
@@ -125,6 +141,7 @@ go_fullscreen() {
 }
 
 while true; do
+  rotate_log
   "$SCRIPT_DIR/set-display-1080.sh" session >>"$LOG" 2>&1 || true
   max_pi_audio
   ensure_helper
@@ -136,6 +153,7 @@ while true; do
     (sleep 3; max_pi_audio) &
   fi
   while chrome_running; do
+    rotate_log
     max_pi_audio
     sleep 8
   done

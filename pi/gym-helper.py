@@ -47,7 +47,19 @@ RADAR = {
 
 
 def log(message: str) -> None:
-    print(message, flush=True)
+    stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{stamp} {message}", flush=True)
+
+
+def format_span(seconds: float) -> str:
+    total = max(0, int(seconds))
+    minutes, secs = divmod(total, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours} h {minutes} min"
+    if minutes:
+        return f"{minutes} min {secs} s" if secs else f"{minutes} min"
+    return f"{secs} s"
 
 
 def run(command: list[str]) -> tuple[int, str]:
@@ -163,6 +175,7 @@ def send_power(on: bool) -> None:
     if not cec_allowed():
         log("CEC blockerat (läge Av)")
         return
+    log("skickar kommando på" if on else "skickar kommando av")
     if on:
         send_cec_command(f"on {TV_ADDRESS}")
         # Active Source byter TV:ns ingång till Pi. På Pi 4 kan `as` fälla
@@ -515,6 +528,8 @@ def on_radar_presence(dist, state: str) -> None:
     now = time.monotonic()
     with LOCK:
         already = RADAR.get("state") in ("motion", "still")
+        last_motion = float(RADAR.get("lastMotionAt") or 0)
+        idle_min = int(STATE.get("radarIdleMinutes") or 120)
         RADAR["lastMotionAt"] = now
         RADAR["state"] = state
         if isinstance(dist, int) and dist >= 0:
@@ -523,8 +538,16 @@ def on_radar_presence(dist, state: str) -> None:
         was_on = bool(STATE.get("hdmiOn"))
     if mode != "radar":
         return
-    if not already:
-        log(f"radar närvaro {dist} cm — timeout nollställd")
+    # Heartbeat nollställer var femte sekund. Logga bara när nedräkningen
+    # hunnit gå minst en minut, annars växer loggen hela kvällen.
+    if not already and last_motion > 0 and now - last_motion >= 60:
+        stood = format_span(now - last_motion)
+        log(
+            f"radar närvaro {dist} cm — nollställde nedräkning som stod på "
+            f"{stood} av {idle_min} min"
+        )
+    elif not already and last_motion <= 0:
+        log(f"radar närvaro {dist} cm — startade nedräkning på {idle_min} min")
     if not was_on:
         set_hdmi_on(True, "radar-presence")
 
