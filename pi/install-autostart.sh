@@ -8,27 +8,9 @@ chmod +x "$DISPLAY_SH" "$SCRIPT_DIR/gym-helper.py" "$SCRIPT_DIR/install.sh" "$SC
 
 pkill -f vvk-hide-cursor >/dev/null 2>&1 || true
 
-mkdir -p "$HOME/.config/autostart"
-python3 - "$HOME/.config/autostart/gym-display.desktop" "$DISPLAY_SH" <<'PY'
-from pathlib import Path
-import sys
-path = Path(sys.argv[1])
-script = sys.argv[2]
-path.write_text(
-    "\n".join(
-        [
-            "[Desktop Entry]",
-            "Type=Application",
-            "Name=VVK gymskärm",
-            # bash: skriptet ska starta även om git-checkout tappat +x
-            f"Exec=bash {script}",
-            "X-GNOME-Autostart-enabled=true",
-            "",
-        ]
-    ),
-    encoding="utf-8",
-)
-PY
+# En startväg: labwc/autostart. Ta bort XDG-desktop så skärmen inte
+# startar två gånger (labwc + ~/.config/autostart).
+rm -f "$HOME/.config/autostart/gym-display.desktop"
 
 if [[ -f "$HOME/.config/wayfire.ini" ]]; then
   python3 - "$HOME/.config/wayfire.ini" <<'PY'
@@ -121,8 +103,7 @@ home.write_text(text, encoding="utf-8")
 PY
 
 echo "Autostart är installerad för $(whoami)."
-echo "  En startväg: $HOME/.config/labwc/autostart"
-echo "  Autostart: labwc och ~/.config/autostart"
+echo "  Startväg: $HOME/.config/labwc/autostart"
 echo
 echo "Starta om: sudo reboot"
 echo "Logg: $HOME/.vvk-gym-display.log"
