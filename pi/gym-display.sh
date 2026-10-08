@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$SCRIPT_DIR/gym-helper.py"
 FULLSCREEN="$SCRIPT_DIR/chromium-fullscreen.py"
 LOG="${HOME}/.vvk-gym-display.log"
+CHROME_LOG="${HOME}/.vvk-gym-chromium.log"
 LOG_MAX_BYTES=1048576
 PROFILE="${HOME}/.config/vvk-gym-chromium"
 CDP_PORT="${VVK_CDP_PORT:-9222}"
@@ -85,6 +86,17 @@ chrome_running() {
 start_chromium() {
   clear_chromium_crash
   log "öppnar $DISPLAY_URL"
+  # Chromiums GCM/push-brus (DEPRECATED_ENDPOINT m.m.) hör inte hemma i
+  # gymlogen. Behåll egen fil, kapa den på samma sätt som huvudloggen.
+  if [[ -f "$CHROME_LOG" ]]; then
+    local size
+    size=$(stat -c%s "$CHROME_LOG" 2>/dev/null || echo 0)
+    if (( size > LOG_MAX_BYTES )); then
+      tail -c $((LOG_MAX_BYTES / 2)) "$CHROME_LOG" > "${CHROME_LOG}.tmp"
+      cat "${CHROME_LOG}.tmp" > "$CHROME_LOG"
+      rm -f "${CHROME_LOG}.tmp"
+    fi
+  fi
   "$CHROMIUM" \
     --ozone-platform=wayland \
     --start-maximized \
@@ -105,8 +117,9 @@ start_chromium() {
     --disable-sync \
     --disable-component-update \
     --disable-features=PushMessaging,Translation,MediaRouter \
+    --log-level=3 \
     "$DISPLAY_URL" \
-    >>"$LOG" 2>&1 &
+    >>"$CHROME_LOG" 2>&1 &
 }
 
 LOCK="${HOME}/.vvk-gym-display.lock"
