@@ -44,6 +44,8 @@ RADAR = {
     "lastMotionAt": 0.0,
     "lastSeq": None,
 }
+# Idle utan närvaro räknas från helperstart (så natten släcker trots lastMotionAt=0).
+HELPER_STARTED_AT = time.monotonic()
 
 
 def log(message: str) -> None:
@@ -548,7 +550,8 @@ def on_radar_presence(dist, state: str) -> None:
         )
     elif not already and last_motion <= 0:
         log(f"radar närvaro {dist} cm — startade nedräkning på {idle_min} min")
-    if not was_on:
+    # Tänd bara om idle tidigare släckt (hdmiOn false). Annars är TV:n redan på.
+    if not already and not was_on:
         set_hdmi_on(True, "radar-presence")
 
 
@@ -611,9 +614,11 @@ def radar_idle_watch() -> None:
             idle_min = int(STATE.get("radarIdleMinutes") or 120)
             last_motion = float(RADAR.get("lastMotionAt") or 0)
             hdmi_on = bool(STATE.get("hdmiOn"))
-        if mode != "radar" or not hdmi_on or last_motion <= 0:
+        if mode != "radar" or not hdmi_on:
             continue
-        elapsed = time.monotonic() - last_motion
+        # Ingen närvaro sedan start: räkna från helperstart, annars från senast sedd.
+        anchor = last_motion if last_motion > 0 else HELPER_STARTED_AT
+        elapsed = time.monotonic() - anchor
         if elapsed >= idle_min * 60:
             set_hdmi_on(False, f"radar-idle {idle_min} min")
 
@@ -692,6 +697,16 @@ def main() -> None:
             current = dict(STATE)
             save_state()
         threading.Thread(target=apply_change, args=(previous, current), daemon=True).start()
+    elif STATE.get("mode") == "radar":
+        # Boot/strömavbrott: tänd TV och sätt state på så de är synkade.
+        # Tom hall släcks sedan av idle från helperstart.
+        with LOCK:
+            STATE["hdmiOn"] = True
+            STATE["hdmiCommand"] = "on"
+            STATE["hdmiCommandId"] = int(time.time() * 1000)
+            save_state()
+        log("radar: tänder TV vid start")
+        send_power(True)
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     log(f"vvk gym helper on http://{HOST}:{PORT} mode={STATE.get('mode')}")
     server.serve_forever()
