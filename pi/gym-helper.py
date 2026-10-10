@@ -43,6 +43,8 @@ RADAR = {
     "dist": None,
     "lastMotionAt": 0.0,
     "lastSeq": None,
+    "heartbeatActive": False,
+    "heartbeatSince": 0.0,
 }
 # Idle utan närvaro räknas från helperstart (så natten släcker trots lastMotionAt=0).
 HELPER_STARTED_AT = time.monotonic()
@@ -525,9 +527,10 @@ def radar_send(ser, cmd: str) -> None:
     ser.write((cmd + "\n").encode("ascii"))
 
 
-def on_radar_presence(dist, state: str) -> None:
+def on_radar_presence(dist, state: str, *, heartbeat: bool = False) -> None:
     """Nollställ idle-timern så länge någon är i zonen, även på samma avstånd."""
     now = time.monotonic()
+    start_heartbeat = False
     with LOCK:
         already = RADAR.get("state") in ("motion", "still")
         last_motion = float(RADAR.get("lastMotionAt") or 0)
@@ -537,11 +540,15 @@ def on_radar_presence(dist, state: str) -> None:
         if isinstance(dist, int) and dist >= 0:
             RADAR["dist"] = dist
         mode = STATE.get("mode")
+        # Första status-heartbeat i ett närvaropass. Följande var femte sekund är tysta.
+        if heartbeat and mode == "radar" and not RADAR.get("heartbeatActive"):
+            RADAR["heartbeatActive"] = True
+            RADAR["heartbeatSince"] = now
+            start_heartbeat = True
         was_on = bool(STATE.get("hdmiOn"))
     if mode != "radar":
         return
-    # Heartbeat nollställer var femte sekund. Logga bara när nedräkningen
-    # hunnit gå minst en minut, annars växer loggen hela kvällen.
+    # Återkomst efter en tyst minut loggas direkt. Pågående heartbeat gör det inte.
     if not already and last_motion > 0 and now - last_motion >= 60:
         stood = format_span(now - last_motion)
         log(
@@ -550,9 +557,27 @@ def on_radar_presence(dist, state: str) -> None:
         )
     elif not already and last_motion <= 0:
         log(f"radar närvaro {dist} cm — startade nedräkning på {idle_min} min")
+    if start_heartbeat:
+        where = f" ({dist} cm)" if isinstance(dist, int) else ""
+        log(f"heartbeat startad, nollställer{where}")
     # Tänd bara om idle tidigare släckt (hdmiOn false). Annars är TV:n redan på.
     if not already and not was_on:
         set_hdmi_on(True, "radar-presence")
+
+
+def stop_heartbeat() -> None:
+    """Logga en gång när heartbeat slutar nollställa nedräkningen."""
+    now = time.monotonic()
+    with LOCK:
+        if not RADAR.get("heartbeatActive"):
+            return
+        started = float(RADAR.get("heartbeatSince") or 0)
+        RADAR["heartbeatActive"] = False
+        RADAR["heartbeatSince"] = 0.0
+    if started > 0:
+        log(f"heartbeat upphört efter {format_span(now - started)}")
+        return
+    log("heartbeat upphört")
 
 
 def handle_radar_msg(msg: dict) -> None:
@@ -576,17 +601,19 @@ def handle_radar_msg(msg: dict) -> None:
         with LOCK:
             RADAR["state"] = "clear"
             RADAR["dist"] = None
+        stop_heartbeat()
         return
 
     if event == "status":
         state = msg.get("state")
         if state in ("motion", "still"):
-            on_radar_presence(msg.get("dist"), state)
+            on_radar_presence(msg.get("dist"), state, heartbeat=True)
             return
         if state == "clear":
             with LOCK:
                 RADAR["state"] = "clear"
                 RADAR["dist"] = None
+            stop_heartbeat()
         return
 
     if event == "boot":
@@ -661,6 +688,7 @@ def radar_worker() -> None:
     while True:
         path = find_radar_port()
         if not path:
+            stop_heartbeat()
             with LOCK:
                 RADAR["connected"] = False
                 RADAR["state"] = "unknown"
@@ -676,10 +704,13 @@ def radar_worker() -> None:
                 radar_send(ser, "status")
                 radar_read_loop(ser)
         except Exception as error:  # serial/OS/timeout
+            stop_heartbeat()
             log(f"radar frånkopplad: {error}")
         with LOCK:
             RADAR["connected"] = False
             RADAR["state"] = "unknown"
+            RADAR["heartbeatActive"] = False
+            RADAR["heartbeatSince"] = 0.0
         time.sleep(2)
 
 
